@@ -1,1 +1,142 @@
-read me
+Below is an updated `README.md` file for your BTC Tracker project, tailored for your GitHub repository (`https://github.com/mjamiv/btc_tracker`). This README reflects the current state of your project, including the professional black-themed dashboard, the table, and the (soon-to-be-working) historical price chart with purchase plotting. It provides clear instructions for setup, usage, and troubleshooting, making it easy for anyone (or future you) to understand and contribute to the project. Since the chart isn’t working yet, I’ll note that as a known issue with a plan for resolution.
+
+---
+
+# My BTC Tracker
+
+A professional web application to track my Bitcoin (BTC) purchases, inspired by [saylortracker.com](https://saylortracker.com). This app reads my transaction data from a CSV file, calculates total BTC holdings, invested amount, current value, and gains/losses based on real-time Bitcoin prices, and displays the data in a sleek, black-themed dashboard. It also aims to include a historical price chart with purchase plotting (currently in progress).
+
+## Live Demo
+You can view the live app at: [https://mjamiv.github.io/btc_tracker/](https://mjamiv.github.io/btc_tracker/)
+
+## Features
+- Displays total BTC owned, total USD invested, current value, and unrealized gain/loss in a professional dashboard layout.
+- Shows a table of purchase history with timestamps, BTC amounts, and costs.
+- Pulls live Bitcoin prices from the CoinGecko API.
+- (In Progress) Visualizes historical Bitcoin prices with a line chart and overlays purchase points, sized by USD cost, similar to saylortracker.com.
+- Black-themed UI with a modern, business-like aesthetic.
+
+## Screenshot
+![BTC Tracker Dashboard](screenshot.png)  
+*Note: The chart section is currently not rendering due to an issue (see [Known Issues](#known-issues)).*
+
+## Data Format
+The app uses a CSV file (`transactions.csv`) with the following structure:
+```
+ID,Timestamp,Transaction Type,Asset,Quantity Transacted,Price Currency,Price at Transaction,Subtotal,Total (inclusive of fees and/or spread),Fees and/or Spread,Notes
+664f4b56d0abbf7f9557e447,2024-05-23 13:57:42 UTC,Buy,BTC,0.00285281,USD,$68120.195,$196.26,$200.00,$3.74,Bought 0.00285281 BTC for 200 USD
+```
+Key columns used:
+- `Timestamp`: Date and time of purchase.
+- `Transaction Type`: Filters for `"Buy"` or `"Advanced Trade Buy"`.
+- `Quantity Transacted`: Amount of BTC bought.
+- `Total (inclusive of fees and/or spread)`: Total USD spent per transaction.
+
+## Prerequisites
+- A modern web browser (e.g., Chrome, Firefox).
+- Internet access (to fetch live BTC prices and historical data).
+- A GitHub Pages setup for hosting (already configured for this repo).
+
+## Setup
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/mjamiv/btc_tracker.git
+   cd btc_tracker
+   ```
+
+2. **Prepare Your CSV**
+   - Ensure your transaction data is saved as `transactions.csv` in the root directory.
+   - Match the column headers exactly as shown above (case-sensitive).
+
+3. **Install Dependencies**
+   - No manual installation needed! The app pulls dependencies via CDNs:
+     - [PapaParse](https://www.papaparse.com/) for CSV parsing.
+     - [Chart.js](https://www.chartjs.org/) for graphing.
+     - [chartjs-adapter-date-fns](https://github.com/chartjs/chartjs-adapter-date-fns) for time scale support.
+
+4. **Host Locally (Optional)**
+   - To test locally, use a local server to avoid CORS issues:
+     ```bash
+     npx http-server
+     ```
+     - Open `http://localhost:8080` in your browser.
+   - Alternatively, view the live demo on GitHub Pages (see [Live Demo](#live-demo)).
+
+5. **Deploy to GitHub Pages**
+   - The app is already set up for GitHub Pages. Simply push changes to the `main` branch:
+     ```bash
+     git add .
+     git commit -m "Update BTC Tracker"
+     git push origin main
+     ```
+   - GitHub Pages will automatically deploy the updated site.
+
+## Usage
+1. Visit the live demo ([https://mjamiv.github.io/btc_tracker/](https://mjamiv.github.io/btc_tracker/)) or open `index.html` locally via a server.
+2. The app automatically:
+   - Loads `transactions.csv` from the GitHub repository.
+   - Fetches the current Bitcoin price from CoinGecko.
+   - Calculates and displays your stats (Total BTC, Invested, Current Value, Gain/Loss).
+   - Renders a table of your purchase history.
+   - Attempts to render a historical price chart (see [Known Issues](#known-issues)).
+3. Click the "Refresh" button to update the data.
+
+## File Structure
+```
+btc_tracker/
+├── index.html         # Main webpage with layout and styles
+├── script.js          # Logic for parsing CSV, fetching data, and rendering UI/chart
+├── transactions.csv   # Transaction data in CSV format
+├── README.md          # This file
+```
+
+## Example Output
+- **Stats**:
+  - Total BTC: 0.61186380
+  - Total Invested: $38,444.97
+  - Current Value: $57,688.36
+  - Gain/Loss: +$19,243.39
+- **Table**: Lists each purchase with date, BTC amount, and cost.
+- **Chart (In Progress)**: Will show a gold line for BTC price over time with green dots for purchases, sized by USD cost.
+
+## Known Issues
+- **Chart Not Rendering**: The historical price chart (intended to show BTC price over time with purchase points) is not displaying. Likely causes:
+  - CORS issues with the CoinGecko historical price API (`/coins/bitcoin/market_chart`).
+  - Missing or incompatible Chart.js date adapter.
+  - Data mismatch between purchase dates and historical price data.
+- **Resolution Plan**:
+  - Check browser console for errors (e.g., CORS, fetch failures).
+  - Test with a CORS proxy for development (e.g., `cors-anywhere`).
+  - Consider alternative APIs (e.g., CoinCap) if CoinGecko issues persist.
+  - Verify Chart.js setup and data formatting.
+
+## Future Enhancements
+- Fix the historical price chart to display BTC price trends and purchase points.
+- Add zooming and panning to the chart for better interactivity.
+- Include additional stats (e.g., average purchase price, percentage gain).
+- Add CSV upload functionality for dynamic data updates.
+- Implement periodic price refresh without manual button clicks.
+
+## Credits
+- Built with assistance from Grok 3 by xAI.
+- Uses [CoinGecko API](https://www.coingecko.com/en/api) for BTC prices.
+- CSV parsing by [PapaParse](https://www.papaparse.com/).
+- Charting by [Chart.js](https://www.chartjs.org/).
+
+## License
+This project is for personal use. Feel free to adapt it for your own purposes!
+
+---
+
+### Notes for You
+- **Screenshot Placeholder**: The `README.md` references a `screenshot.png` file, which isn’t in your repo yet. You can upload your current screenshot to the repo and link it here, or I can help generate a new one if needed.
+- **Known Issues**: I’ve documented the chart issue and provided steps to resolve it, which aligns with our ongoing troubleshooting.
+- **Copy-Paste Ready**: You can copy this entire markdown content and paste it into your GitHub repo’s `README.md` file.
+
+To add this to your GitHub repo:
+1. Go to `https://github.com/mjamiv/btc_tracker`.
+2. Edit or create a new `README.md` file.
+3. Paste the content above.
+4. Commit the changes.
+
+Let me know if you’d like to adjust any sections (e.g., add more details, update the screenshot, etc.) or if you’d like help with anything else! How’s the README looking for your needs?
