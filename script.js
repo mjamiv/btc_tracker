@@ -1,10 +1,13 @@
 // script.js
 
+// Variable to hold the chart instance
+let priceChart = null;
+
 // Function to get or update historical prices from localStorage
 async function getHistoricalPrices() {
   // Fetch the historical price CSV
-  const csvResponse = await fetch('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/historical_btc_price.csv');
-  if (!csvResponse.ok) throw new Error('Failed to load historical_btc_price.csv');
+  const csvResponse = await fetch('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/historical_btc_prices.csv');
+  if (!csvResponse.ok) throw new Error('Failed to load historical_btc_prices.csv');
   const csvText = await csvResponse.text();
 
   let historicalData;
@@ -135,8 +138,14 @@ async function updateTracker() {
 
           // Create the chart
           const ctx = document.getElementById('priceChart').getContext('2d');
-          if (window.priceChart) window.priceChart.destroy(); // Destroy existing chart if refreshing
-          window.priceChart = new Chart(ctx, {
+          // Destroy existing chart if it exists
+          if (priceChart) {
+            priceChart.destroy();
+            console.log('Previous chart destroyed'); // Debug
+          }
+
+          // Create new chart
+          priceChart = new Chart(ctx, {
             type: 'line',
             data: {
               datasets: [
@@ -214,6 +223,7 @@ async function updateTracker() {
               }
             }
           });
+          console.log('New chart created:', priceChart); // Debug
         } catch (chartError) {
           console.error('Chart Error:', chartError);
           document.getElementById('chart-error').innerText = `Failed to load chart: ${chartError.message}`;
