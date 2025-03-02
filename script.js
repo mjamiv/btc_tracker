@@ -1,12 +1,61 @@
 // script.js
+
+// Function to get or update historical prices from localStorage
+async function getHistoricalPrices() {
+  // Fetch the historical price CSV
+  const csvResponse = await fetch('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/historical_btc_prices.csv');
+  if (!csvResponse.ok) throw new Error('Failed to load historical_btc_prices.csv');
+  const csvText = await csvResponse.text();
+
+  let historicalData;
+  Papa.parse(csvText, {
+    header: true,
+    complete: (result) => {
+      historicalData = result.data.map(row => ({
+        timestamp: new Date(row.timestamp).getTime(),
+        price: parseFloat(row.close)
+      })).filter(row => !isNaN(row.timestamp) && !isNaN(row.price)); // Filter out invalid rows
+    }
+  });
+
+  // Store in localStorage or retrieve existing appended data
+  const storedData = localStorage.getItem('btcHistoricalPrices');
+  let prices = storedData ? JSON.parse(storedData) : historicalData;
+
+  // Get the last date in the dataset
+  const lastDate = new Date(prices[prices.length - 1].timestamp);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Normalize to midnight
+
+  // If the last date is before today, fetch the current price and append
+  if (lastDate < today) {
+    try {
+      const priceResponse = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+      if (!priceResponse.ok) throw new Error('Failed to fetch BTC price for appending');
+      const priceData = await priceResponse.json();
+      const btcPrice = priceData.bitcoin.usd;
+      const newEntry = { timestamp: today.getTime(), price: btcPrice };
+      prices.push(newEntry);
+      // Sort by date
+      prices.sort((a, b) => a.timestamp - b.timestamp);
+      // Update localStorage
+      localStorage.setItem('btcHistoricalPrices', JSON.stringify(prices));
+    } catch (error) {
+      console.error('Error appending new price:', error);
+    }
+  }
+
+  return prices;
+}
+
 async function updateTracker() {
   try {
-    // Fetch CSV file
+    // Fetch transactions CSV
     const csvResponse = await fetch('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/transactions.csv');
     if (!csvResponse.ok) throw new Error('Failed to load transactions.csv');
     const csvText = await csvResponse.text();
 
-    // Parse CSV with PapaParse
+    // Parse transactions CSV with PapaParse
     Papa.parse(csvText, {
       header: true,
       complete: async (result) => {
@@ -47,30 +96,31 @@ async function updateTracker() {
           history.appendChild(row);
         });
 
-        // Render chart in a separate try-catch
+        // Render chart
         try {
-          // Fetch historical BTC prices (last 2 years)
-          const historicalResponse = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=730');
-          if (!historicalResponse.ok) throw new Error('Failed to fetch historical BTC prices');
-          const historicalData = await historicalResponse.json();
+          // Get historical prices (from CSV + appended)
+          const historicalData = await getHistoricalPrices();
           console.log('Historical Data:', historicalData); // Debug
 
-          const priceDataPoints = historicalData.prices.map(point => ({
-            date: new Date(point[0]),
-            price: point[1]
+          const priceDataPoints = historicalData.map(point => ({
+            date: new Date(point.timestamp),
+            price: point.price
           }));
           console.log('Price Data Points:', priceDataPoints); // Debug
 
           // Prepare purchase data for plotting
-          const purchaseDataPoints = purchases.map(p => {
-            const cost = parseFloat(p["Total (inclusive of fees and/or spread)"].replace('$', ''));
-            return {
-              date: new Date(p.Timestamp),
-              cost: cost,
-              btc: parseFloat(p["Quantity Transacted"]),
-              size: Math.sqrt(cost) * 2 // Scale point size based on cost
-            };
-          });
+          const earliestPriceDate = new Date(priceDataPoints[0].date);
+          const purchaseDataPoints = purchases
+            .filter(p => new Date(p.Timestamp) >= earliestPriceDate) // Filter purchases before earliest price
+            .map(p => {
+              const cost = parseFloat(p["Total (inclusive of fees and/or spread)"].replace('$', ''));
+              return {
+                date: new Date(p.Timestamp),
+                cost: cost,
+                btc: parseFloat(p["Quantity Transacted"]),
+                size: Math.sqrt(cost) * 2 // Scale point size based on cost
+              };
+            });
           console.log('Purchase Data Points:', purchaseDataPoints); // Debug
 
           // Find the corresponding price for each purchase
