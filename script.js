@@ -15,7 +15,7 @@ async function getHistoricalPrices() {
     header: true,
     complete: (result) => {
       historicalData = result.data.map(row => ({
-        timestamp: new Date(row.timestamp).getTime(),
+        timestamp: new Date(row.timestamp + ' UTC').getTime(), // Explicitly parse as UTC
         price: parseFloat(row.close)
       })).filter(row => !isNaN(row.timestamp) && !isNaN(row.price)); // Filter out invalid rows
     }
@@ -54,7 +54,7 @@ async function getHistoricalPrices() {
 // Helper function to normalize dates for comparison (remove time component)
 function normalizeDate(date) {
   const normalized = new Date(date);
-  normalized.setHours(0, 0, 0, 0);
+  normalized.setUTCHours(0, 0, 0, 0); // Normalize using UTC
   return normalized;
 }
 
@@ -124,18 +124,18 @@ async function updateTracker() {
 
           const purchaseDataPoints = purchases
             .filter(p => {
-              const purchaseDate = new Date(p.Timestamp);
+              const purchaseDate = new Date(p.Timestamp + ' UTC');
               console.log('Purchase Date (raw):', p.Timestamp, 'Parsed:', purchaseDate); // Debug
               return purchaseDate >= earliestPriceDate;
             })
             .map(p => {
               const cost = parseFloat(p["Total (inclusive of fees and/or spread)"].replace('$', ''));
-              const purchaseDate = normalizeDate(new Date(p.Timestamp));
+              const purchaseDate = normalizeDate(new Date(p.Timestamp + ' UTC'));
               return {
                 date: purchaseDate,
                 cost: cost,
                 btc: parseFloat(p["Quantity Transacted"]),
-                size: Math.sqrt(cost) * 2 // Scale point size based on cost
+                size: Math.sqrt(cost) * 0.5 + 3 // Adjusted scaling for green dots
               };
             });
           console.log('Purchase Data Points:', purchaseDataPoints); // Debug
@@ -143,7 +143,7 @@ async function updateTracker() {
           // Find the corresponding price for each purchase
           const purchasePrices = purchaseDataPoints.map(p => {
             const matchingPrice = priceDataPoints.find(hp => hp.date.getTime() === p.date.getTime());
-            console.log('Matching Purchase:', p.date, 'Historical Price Date:', matchingPrice ? matchingPrice.date : 'No match', 'Price:', matchingPrice ? matchingPrice.price : 'N/A'); // Debug
+            console.log('Matching Purchase:', p.date, 'Historical Price Date:', matchingPrice ? matchingPrice.date : 'No match', 'Price:', matchingPrice ? matchingPrice.price : 'N/A', 'Size:', p.size); // Debug
             return {
               ...p,
               price: matchingPrice ? matchingPrice.price : null
@@ -179,7 +179,7 @@ async function updateTracker() {
                   type: 'scatter',
                   backgroundColor: '#00ff00',
                   pointRadius: purchasePrices.map(p => p.size),
-                  pointHoverRadius: purchasePrices.map(p => p.size + 5),
+                  pointHoverRadius: purchasePrices.map(p => p.size + 2), // Slightly larger on hover
                   yAxisID: 'y'
                 }
               ]
