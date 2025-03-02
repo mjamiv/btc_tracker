@@ -1,0 +1,19 @@
+<html>
+  <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  </head>
+  <body>
+    <h1>My BTC Tracker</h1>
+    <p>Total BTC: <span id="total-btc"></span></p>
+    <p>Total Invested: <span id="invested"></span></p>
+    <p>Current Value: <span id="value"></span></p>
+    <p>Gain/Loss: <span id="gain"></span></p>
+    <table border="1">
+      <thead>
+        <tr><th>Date</th><th>BTC Bought</th><th>Total Cost</th></tr>
+      </thead>
+      <tbody id="history"></tbody>
+    </table>
+    <script src="script.js"></script>
+  </body>
+</html>
