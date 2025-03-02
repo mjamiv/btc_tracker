@@ -6,6 +6,7 @@
   <title>My BTC Tracker</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <style>
     body {
       font-family: 'Arial', sans-serif;
@@ -92,6 +93,11 @@
     button:hover {
       background-color: #e6c200;
     }
+    .error {
+      color: #ff0000;
+      text-align: center;
+      margin: 10px 0;
+    }
   </style>
 </head>
 <body>
@@ -124,6 +130,7 @@
       </table>
     </div>
     <div class="chart-container">
+      <div id="chart-error" class="error"></div>
       <canvas id="priceChart"></canvas>
     </div>
     <button onclick="updateTracker()">Refresh</button>
