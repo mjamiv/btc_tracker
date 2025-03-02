@@ -5,10 +5,16 @@ async function updateTracker() {
   const csvText = await response.text();
 
   // Parse CSV with PapaParse 
-  Papa.parse(csvText, {
-    header: true,
-    complete: async (result) => {
-      const purchases = result.data.filter(row => row["Transaction Type"] === "Buy");
+Papa.parse(csvText, {
+  header: true,
+  complete: async (result) => {
+    const purchases = result.data.filter(row => 
+      row["Transaction Type"] === "Buy" || row["Transaction Type"] === "Advanced Trade Buy"
+    );
+
+    console.log(purchases); // Verify the filtered results
+  }
+});
 
       // Calculations
       const totalBtc = purchases.reduce((sum, p) => sum + parseFloat(p["Quantity Transacted"] || 0), 0);
