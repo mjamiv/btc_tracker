@@ -1,7 +1,7 @@
 // script.js
 async function updateTracker() {
-  // Fetch CSV file (assume it's named btc_purchases.csv in the same directory)
-  const response = await fetch('btc_purchases.csv');
+  // Fetch CSV file (assume it's named transactions.csv in the same directory)
+  const response = await fetch('transactions.csv');
   const csvText = await response.text();
 
   // Parse CSV with PapaParse
