@@ -51,6 +51,13 @@ async function getHistoricalPrices() {
   return prices;
 }
 
+// Helper function to normalize dates for comparison (remove time component)
+function normalizeDate(date) {
+  const normalized = new Date(date);
+  normalized.setHours(0, 0, 0, 0);
+  return normalized;
+}
+
 async function updateTracker() {
   try {
     // Fetch transactions CSV
@@ -106,19 +113,26 @@ async function updateTracker() {
           console.log('Historical Data:', historicalData); // Debug
 
           const priceDataPoints = historicalData.map(point => ({
-            date: new Date(point.timestamp),
+            date: normalizeDate(new Date(point.timestamp)),
             price: point.price
           }));
           console.log('Price Data Points:', priceDataPoints); // Debug
 
           // Prepare purchase data for plotting
           const earliestPriceDate = new Date(priceDataPoints[0].date);
+          console.log('Earliest Price Date:', earliestPriceDate); // Debug
+
           const purchaseDataPoints = purchases
-            .filter(p => new Date(p.Timestamp) >= earliestPriceDate) // Filter purchases before earliest price
+            .filter(p => {
+              const purchaseDate = new Date(p.Timestamp);
+              console.log('Purchase Date (raw):', p.Timestamp, 'Parsed:', purchaseDate); // Debug
+              return purchaseDate >= earliestPriceDate;
+            })
             .map(p => {
               const cost = parseFloat(p["Total (inclusive of fees and/or spread)"].replace('$', ''));
+              const purchaseDate = normalizeDate(new Date(p.Timestamp));
               return {
-                date: new Date(p.Timestamp),
+                date: purchaseDate,
                 cost: cost,
                 btc: parseFloat(p["Quantity Transacted"]),
                 size: Math.sqrt(cost) * 2 // Scale point size based on cost
@@ -128,13 +142,14 @@ async function updateTracker() {
 
           // Find the corresponding price for each purchase
           const purchasePrices = purchaseDataPoints.map(p => {
-            const matchingPrice = priceDataPoints.find(hp => hp.date.toDateString() === p.date.toDateString());
+            const matchingPrice = priceDataPoints.find(hp => hp.date.getTime() === p.date.getTime());
+            console.log('Matching Purchase:', p.date, 'Historical Price Date:', matchingPrice ? matchingPrice.date : 'No match', 'Price:', matchingPrice ? matchingPrice.price : 'N/A'); // Debug
             return {
               ...p,
               price: matchingPrice ? matchingPrice.price : null
             };
           }).filter(p => p.price !== null); // Filter out unmatched purchases
-          console.log('Purchase Prices:', purchasePrices); // Debug
+          console.log('Purchase Prices (final):', purchasePrices); // Debug
 
           // Create the chart
           const ctx = document.getElementById('priceChart').getContext('2d');
