@@ -4,7 +4,7 @@ async function updateTracker() {
   const response = await fetch('transactions.csv');
   const csvText = await response.text();
 
-  // Parse CSV with PapaParse
+  // Parse CSV with PapaParse 
   Papa.parse(csvText, {
     header: true,
     complete: async (result) => {
