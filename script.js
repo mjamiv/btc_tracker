@@ -47,101 +47,131 @@ async function updateTracker() {
           history.appendChild(row);
         });
 
-        // Fetch historical BTC prices (last 2 years for better range)
-        const historicalResponse = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=730');
-        if (!historicalResponse.ok) throw new Error('Failed to fetch historical BTC prices');
-        const historicalData = await historicalResponse.json();
-        const priceDataPoints = historicalData.prices.map(point => ({
-          date: new Date(point[0]),
-          price: point[1]
-        }));
+        // Render chart in a separate try-catch
+        try {
+          // Fetch historical BTC prices (last 2 years)
+          const historicalResponse = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=730');
+          if (!historicalResponse.ok) throw new Error('Failed to fetch historical BTC prices');
+          const historicalData = await historicalResponse.json();
+          console.log('Historical Data:', historicalData); // Debug
 
-        // Prepare purchase data for plotting
-        const purchaseDataPoints = purchases.map(p => {
-          const cost = parseFloat(p["Total (inclusive of fees and/or spread)"].replace('$', ''));
-          return {
-            date: new Date(p.Timestamp),
-            cost: cost,
-            btc: parseFloat(p["Quantity Transacted"]),
-            size: Math.sqrt(cost) * 2 // Scale point size based on cost
-          };
-        });
+          const priceDataPoints = historicalData.prices.map(point => ({
+            date: new Date(point[0]),
+            price: point[1]
+          }));
+          console.log('Price Data Points:', priceDataPoints); // Debug
 
-        // Create the chart
-        const ctx = document.getElementById('priceChart').getContext('2d');
-        if (window.priceChart) window.priceChart.destroy(); // Destroy existing chart if refreshing
-        window.priceChart = new Chart(ctx, {
-          type: 'line',
-          data: {
-            datasets: [
-              {
-                label: 'BTC Price (USD)',
-                data: priceDataPoints.map(p => ({ x: p.date, y: p.price })),
-                borderColor: '#ffd700',
-                backgroundColor: 'rgba(255, 215, 0, 0.1)',
-                fill: true,
-                tension: 0.1,
-                yAxisID: 'y'
-              },
-              {
-                label: 'My Purchases',
-                data: purchaseDataPoints.map(p => ({ x: p.date, y: priceDataPoints.find(hp => hp.date.toDateString() === p.date.toDateString())?.price || 0 })),
-                type: 'scatter',
-                backgroundColor: '#00ff00',
-                pointRadius: purchaseDataPoints.map(p => p.size),
-                pointHoverRadius: purchaseDataPoints.map(p => p.size + 5),
-                yAxisID: 'y'
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            scales: {
-              x: {
-                type: 'time',
-                time: {
-                  unit: 'month'
+          // Prepare purchase data for plotting
+          const purchaseDataPoints = purchases.map(p => {
+            const cost = parseFloat(p["Total (inclusive of fees and/or spread)"].replace('$', ''));
+            return {
+              date: new Date(p.Timestamp),
+              cost: cost,
+              btc: parseFloat(p["Quantity Transacted"]),
+              size: Math.sqrt(cost) * 2 // Scale point size based on cost
+            };
+          });
+          console.log('Purchase Data Points:', purchaseDataPoints); // Debug
+
+          // Find the corresponding price for each purchase
+          const purchasePrices = purchaseDataPoints.map(p => {
+            const matchingPrice = priceDataPoints.find(hp => hp.date.toDateString() === p.date.toDateString());
+            return {
+              ...p,
+              price: matchingPrice ? matchingPrice.price : null
+            };
+          }).filter(p => p.price !== null); // Filter out unmatched purchases
+          console.log('Purchase Prices:', purchasePrices); // Debug
+
+          // Create the chart
+          const ctx = document.getElementById('priceChart').getContext('2d');
+          if (window.priceChart) window.priceChart.destroy(); // Destroy existing chart if refreshing
+          window.priceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              datasets: [
+                {
+                  label: 'BTC Price (USD)',
+                  data: priceDataPoints.map(p => ({ x: p.date, y: p.price })),
+                  borderColor: '#ffd700',
+                  backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                  fill: true,
+                  tension: 0.1,
+                  yAxisID: 'y'
                 },
-                title: {
-                  display: true,
-                  text: 'Date',
-                  color: '#ffffff'
-                },
-                grid: { color: '#444' },
-                ticks: { color: '#ffffff' }
-              },
-              y: {
-                title: {
-                  display: true,
-                  text: 'BTC Price (USD)',
-                  color: '#ffffff'
-                },
-                grid: { color: '#444' },
-                ticks: { color: '#ffffff' }
-              }
+                {
+                  label: 'My Purchases',
+                  data: purchasePrices.map(p => ({ x: p.date, y: p.price })),
+                  type: 'scatter',
+                  backgroundColor: '#00ff00',
+                  pointRadius: purchasePrices.map(p => p.size),
+                  pointHoverRadius: purchasePrices.map(p => p.size + 5),
+                  yAxisID: 'y'
+                }
+              ]
             },
-            plugins: {
-              legend: {
-                labels: { color: '#ffffff' }
+            options: {
+              responsive: true,
+              scales: {
+                x: {
+                  type: 'time',
+                  time: {
+                    unit: 'month'
+                  },
+                  title: {
+                    display: true,
+                    text: 'Date',
+                    color: '#ffffff'
+                  },
+                  grid: {
+                    color: '#444'
+                  },
+                  ticks: {
+                    color: '#ffffff'
+                  }
+                },
+                y: {
+                  title: {
+                    display: true,
+                    text: 'BTC Price (USD)',
+                    color: '#ffffff'
+                  },
+                  grid: {
+                    color: '#444'
+                  },
+                  ticks: {
+                    color: '#ffffff'
+                  }
+                }
               },
-              tooltip: {
-                callbacks: {
-                  label: function(context) {
-                    if (context.dataset.label === 'My Purchases') {
-                      const purchase = purchaseDataPoints[context.dataIndex];
-                      return `Bought ${purchase.btc.toFixed(8)} BTC for $${purchase.cost.toFixed(2)}`;
+              plugins: {
+                legend: {
+                  labels: {
+                    color: '#ffffff'
+                  }
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function(context) {
+                      if (context.dataset.label === 'My Purchases') {
+                        const purchase = purchasePrices[context.dataIndex];
+                        return `Bought ${purchase.btc.toFixed(8)} BTC for $${purchase.cost.toFixed(2)}`;
+                      }
+                      return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
                     }
-                    return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
                   }
                 }
               }
             }
-          }
-        });
+          });
+        } catch (chartError) {
+          console.error('Chart Error:', chartError);
+          document.getElementById('chart-error').innerText = `Failed to load chart: ${chartError.message}`;
+        }
       }
     });
   } catch (error) {
-    console.error(error);
+    console.error('Main Error:', error);
     alert(`Error: ${error.message}`);
   }
 }
