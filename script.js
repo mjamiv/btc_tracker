@@ -3,8 +3,8 @@
 // Function to get or update historical prices from localStorage
 async function getHistoricalPrices() {
   // Fetch the historical price CSV
-  const csvResponse = await fetch('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/historical_btc_prices.csv');
-  if (!csvResponse.ok) throw new Error('Failed to load historical_btc_prices.csv');
+  const csvResponse = await fetch('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/historical_btc_price.csv');
+  if (!csvResponse.ok) throw new Error('Failed to load historical_btc_price.csv');
   const csvText = await csvResponse.text();
 
   let historicalData;
