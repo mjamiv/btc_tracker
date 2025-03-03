@@ -70,6 +70,9 @@ async function updateTracker() {
             </tr>
         `).join('');
 
+        // Log the first few rows of historical prices to inspect column names
+        console.log('First few rows of historical_btc_prices.csv:', historicalPrices.slice(0, 3));
+
         // Process historical prices with correct column names
         const priceData = historicalPrices.map(row => {
             // Log the raw row for debugging
@@ -84,8 +87,9 @@ async function updateTracker() {
                 timestamp = new Date(Date.parse(row.Date));
             }
 
-            // Use correct column name 'Price' and clean it
-            const price = parseFloat(row.Price.replace(/[^0-9.]/g, ''));
+            // Use correct column name 'Price' and clean it, with a fallback
+            const priceStr = row.Price || ''; // Fallback to empty string if undefined
+            const price = parseFloat(priceStr.replace(/[^0-9.]/g, ''));
             return { x: timestamp, y: price };
         }).filter(point => {
             const isValid = !isNaN(point.x) && !isNaN(point.y);
