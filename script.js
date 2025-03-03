@@ -81,9 +81,6 @@ async function updateTracker() {
         const historicalPrices = await fetchCSV('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/historical_btc_prices.csv');
         const currentPrice = await getCurrentBtcPrice();
 
-        // Log the first few rows of transactions to inspect column names
-        console.log('First few rows of transactions.csv:', transactions.slice(0, 3));
-
         // Process transactions with stricter parsing
         const purchases = transactions.map((p, index) => {
             // Log the raw row for debugging
@@ -131,14 +128,8 @@ async function updateTracker() {
             </tr>
         `).join('');
 
-        // Log the first few rows of historical prices to inspect column names
-        console.log('First few rows of historical_btc_prices.csv:', historicalPrices.slice(0, 3));
-
         // Process historical prices
-        originalPriceData = historicalPrices.map((row, index) => {
-            // Log the raw row for debugging
-            console.log(`Historical Price Row ${index}:`, row);
-
+        originalPriceData = historicalPrices.map(row => {
             const timestamp = new Date(row.Date);
             const price = parseFloat((row.Price || '').replace(/[^0-9.]/g, ''));
             return { x: timestamp, y: price };
@@ -253,7 +244,10 @@ async function updateTracker() {
                         ticks: {
                             color: '#ffffff',
                             callback: value => `$${value.toLocaleString()}`
-                        }
+                        },
+                        // Scale down the secondary axis to prevent intersection
+                        suggestedMax: 10000, // Adjust this value to scale down the gain axis
+                        suggestedMin: -5000
                     }
                 },
                 plugins: {
@@ -280,37 +274,46 @@ async function updateTracker() {
             }
         });
 
-        // Initialize date range slider
-        const minDate = new Date(Math.min(...originalPriceData.map(d => d.x)));
-        const maxDate = new Date(Math.max(...originalPriceData.map(d => d.x)));
-        const slider = document.getElementById('date-range-slider');
-        const labels = document.getElementById('date-range-labels');
+        // Initialize date range slider with error handling
+        try {
+            const minDate = new Date(Math.min(...originalPriceData.map(d => d.x)));
+            const maxDate = new Date(Math.max(...originalPriceData.map(d => d.x)));
+            const slider = document.getElementById('date-range-slider');
+            const labels = document.getElementById('date-range-labels');
 
-        noUiSlider.create(slider, {
-            start: [minDate.getTime(), maxDate.getTime()],
-            connect: true,
-            range: {
-                'min': minDate.getTime(),
-                'max': maxDate.getTime()
-            },
-            step: 24 * 60 * 60 * 1000, // Step by day
-            behaviour: 'drag'
-        });
+            if (typeof noUiSlider === 'undefined') {
+                throw new Error('noUiSlider library is not loaded.');
+            }
 
-        // Update labels and chart on slider change
-        slider.noUiSlider.on('update', (values) => {
-            const startDate = new Date(parseInt(values[0]));
-            const endDate = new Date(parseInt(values[1]));
-            
-            // Update labels
-            labels.innerHTML = `
-                <span>${startDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
-                <span>${endDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
-            `;
+            noUiSlider.create(slider, {
+                start: [minDate.getTime(), maxDate.getTime()],
+                connect: true,
+                range: {
+                    'min': minDate.getTime(),
+                    'max': maxDate.getTime()
+                },
+                step: 24 * 60 * 60 * 1000, // Step by day
+                behaviour: 'drag'
+            });
 
-            // Filter chart data
-            filterDataByDateRange(startDate, endDate);
-        });
+            // Update labels and chart on slider change
+            slider.noUiSlider.on('update', (values) => {
+                const startDate = new Date(parseInt(values[0]));
+                const endDate = new Date(parseInt(values[1]));
+                
+                // Update labels
+                labels.innerHTML = `
+                    <span>${startDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+                    <span>${endDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+                `;
+
+                // Filter chart data
+                filterDataByDateRange(startDate, endDate);
+            });
+        } catch (sliderError) {
+            console.error('Slider Initialization Error:', sliderError);
+            document.getElementById('chart-error').innerText = `Error: Failed to initialize date range slider - ${sliderError.message}`;
+        }
     } catch (error) {
         console.error('Error:', error);
         document.getElementById('chart-error').innerText = `Error: ${error.message}`;
