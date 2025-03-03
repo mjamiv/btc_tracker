@@ -1,6 +1,9 @@
 // script.js
 
 let priceChart = null;
+let originalPriceData = [];
+let originalPurchaseData = [];
+let originalGainData = [];
 
 // Fetch and parse CSV data
 async function fetchCSV(url) {
@@ -18,6 +21,56 @@ async function fetchCSV(url) {
 // Get current BTC price (hardcoded for now to match expected value)
 async function getCurrentBtcPrice() {
     return 93162.00;
+}
+
+// Function to calculate cumulative cost basis and gain over time
+function calculateGainData(purchases, historicalPrices) {
+    // Sort purchases by timestamp
+    const sortedPurchases = [...purchases].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+    // Initialize cumulative variables
+    let cumulativeBtc = 0;
+    let cumulativeCost = 0;
+    
+    // Map purchases to cumulative cost basis
+    const costBasisOverTime = sortedPurchases.map(p => {
+        cumulativeBtc += p.quantity;
+        cumulativeCost += p.totalCost;
+        const costBasis = cumulativeBtc > 0 ? cumulativeCost / cumulativeBtc : 0;
+        return {
+            timestamp: new Date(p.timestamp + ' UTC'),
+            costBasis: costBasis,
+            totalBtc: cumulativeBtc
+        };
+    });
+
+    // Calculate gain over time at each historical price point
+    const gainData = historicalPrices.map(row => {
+        const timestamp = new Date(row.Date);
+        const price = parseFloat(row.Price.replace(/[^0-9.]/g, ''));
+
+        // Find the most recent cost basis before this timestamp
+        const relevantPurchase = costBasisOverTime
+            .filter(p => p.timestamp <= timestamp)
+            .slice(-1)[0] || { costBasis: 0, totalBtc: 0 };
+
+        const gain = relevantPurchase.totalBtc > 0 ? (price - relevantPurchase.costBasis) * relevantPurchase.totalBtc : 0;
+        return { x: timestamp, y: gain };
+    }).filter(point => !isNaN(point.x) && !isNaN(point.y));
+
+    return gainData;
+}
+
+// Function to filter chart data based on date range
+function filterDataByDateRange(startDate, endDate) {
+    const filteredPriceData = originalPriceData.filter(point => point.x >= startDate && point.x <= endDate);
+    const filteredPurchaseData = originalPurchaseData.filter(point => point.x >= startDate && point.x <= endDate);
+    const filteredGainData = originalGainData.filter(point => point.x >= startDate && point.x <= endDate);
+
+    priceChart.data.datasets[0].data = filteredPriceData;
+    priceChart.data.datasets[1].data = filteredPurchaseData;
+    priceChart.data.datasets[2].data = filteredGainData;
+    priceChart.update();
 }
 
 // Update the tracker
@@ -70,37 +123,15 @@ async function updateTracker() {
             </tr>
         `).join('');
 
-        // Log the first few rows of historical prices to inspect column names
-        console.log('First few rows of historical_btc_prices.csv:', historicalPrices.slice(0, 3));
-
-        // Process historical prices with correct column names
-        const priceData = historicalPrices.map(row => {
-            // Log the raw row for debugging
-            console.log('Historical Price Row:', row);
-
-            // Use correct column name 'Date'
-            let timestamp = new Date(row.Date + ' UTC');
-            if (isNaN(timestamp)) {
-                timestamp = new Date(row.Date);
-            }
-            if (isNaN(timestamp)) {
-                timestamp = new Date(Date.parse(row.Date));
-            }
-
-            // Use correct column name 'Price' and clean it, with a fallback
-            const priceStr = row.Price || ''; // Fallback to empty string if undefined
-            const price = parseFloat(priceStr.replace(/[^0-9.]/g, ''));
+        // Process historical prices
+        originalPriceData = historicalPrices.map(row => {
+            const timestamp = new Date(row.Date);
+            const price = parseFloat(row.Price.replace(/[^0-9.]/g, ''));
             return { x: timestamp, y: price };
-        }).filter(point => {
-            const isValid = !isNaN(point.x) && !isNaN(point.y);
-            if (!isValid) {
-                console.log('Filtered out invalid historical price point:', point);
-            }
-            return isValid;
-        });
+        }).filter(point => !isNaN(point.x) && !isNaN(point.y));
 
         // Process purchase data
-        const purchaseData = purchases.map(p => {
+        originalPurchaseData = purchases.map(p => {
             const timestamp = new Date(p.timestamp + ' UTC');
             return {
                 x: timestamp,
@@ -110,14 +141,18 @@ async function updateTracker() {
             };
         }).filter(point => !isNaN(point.x) && !isNaN(point.y));
 
-        // Debug chart data
-        console.log('Historical Price Data:', priceData);
-        console.log('Purchase Data:', purchaseData);
+        // Calculate cumulative gain over time
+        originalGainData = calculateGainData(purchases, historicalPrices);
 
-        if (priceData.length === 0) {
+        // Debug chart data
+        console.log('Historical Price Data:', originalPriceData);
+        console.log('Purchase Data:', originalPurchaseData);
+        console.log('Gain Data:', originalGainData);
+
+        if (originalPriceData.length === 0) {
             document.getElementById('chart-error').innerText = 'Error: No valid historical price data available to plot.';
         }
-        if (purchaseData.length === 0) {
+        if (originalPurchaseData.length === 0) {
             document.getElementById('chart-error').innerText = 'Error: No valid purchase data available to plot.';
         }
 
@@ -130,22 +165,34 @@ async function updateTracker() {
                 datasets: [
                     {
                         label: 'BTC Price (USD)',
-                        data: priceData,
+                        data: originalPriceData,
                         borderColor: '#ffd700',
                         backgroundColor: 'rgba(255, 215, 0, 0.1)',
                         fill: true,
                         tension: 0.3,
-                        pointRadius: 0
+                        pointRadius: 0,
+                        yAxisID: 'y'
                     },
                     {
                         label: 'My Purchases',
-                        data: purchaseData,
+                        data: originalPurchaseData,
                         type: 'scatter',
                         backgroundColor: '#00ff00',
                         pointRadius: 6,
                         pointHoverRadius: 8,
                         borderColor: '#ffffff',
-                        borderWidth: 1
+                        borderWidth: 1,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Cumulative Gain (USD)',
+                        data: originalGainData,
+                        borderColor: '#ff5555',
+                        backgroundColor: 'rgba(255, 85, 85, 0.1)',
+                        fill: false,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        yAxisID: 'y1'
                     }
                 ]
             },
@@ -179,6 +226,20 @@ async function updateTracker() {
                             color: '#ffffff',
                             callback: value => `$${value.toLocaleString()}`
                         }
+                    },
+                    y1: {
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Cumulative Gain (USD)',
+                            color: '#ffffff',
+                            font: { size: 14 }
+                        },
+                        grid: { drawOnChartArea: false },
+                        ticks: {
+                            color: '#ffffff',
+                            callback: value => `$${value.toLocaleString()}`
+                        }
                     }
                 },
                 plugins: {
@@ -192,8 +253,10 @@ async function updateTracker() {
                         callbacks: {
                             label: ctx => {
                                 if (ctx.dataset.label === 'My Purchases') {
-                                    const p = purchaseData[ctx.dataIndex];
+                                    const p = originalPurchaseData[ctx.dataIndex];
                                     return `Bought ${p.quantity.toFixed(8)} BTC for $${p.cost.toFixed(2)}`;
+                                } else if (ctx.dataset.label === 'Cumulative Gain (USD)') {
+                                    return `Gain: $${ctx.parsed.y.toLocaleString()}`;
                                 }
                                 return `Price: $${ctx.parsed.y.toLocaleString()}`;
                             }
@@ -201,6 +264,38 @@ async function updateTracker() {
                     }
                 }
             }
+        });
+
+        // Initialize date range slider
+        const minDate = new Date(Math.min(...originalPriceData.map(d => d.x)));
+        const maxDate = new Date(Math.max(...originalPriceData.map(d => d.x)));
+        const slider = document.getElementById('date-range-slider');
+        const labels = document.getElementById('date-range-labels');
+
+        noUiSlider.create(slider, {
+            start: [minDate.getTime(), maxDate.getTime()],
+            connect: true,
+            range: {
+                'min': minDate.getTime(),
+                'max': maxDate.getTime()
+            },
+            step: 24 * 60 * 60 * 1000, // Step by day
+            behaviour: 'drag'
+        });
+
+        // Update labels and chart on slider change
+        slider.noUiSlider.on('update', (values) => {
+            const startDate = new Date(parseInt(values[0]));
+            const endDate = new Date(parseInt(values[1]));
+            
+            // Update labels
+            labels.innerHTML = `
+                <span>${startDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+                <span>${endDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+            `;
+
+            // Filter chart data
+            filterDataByDateRange(startDate, endDate);
         });
     } catch (error) {
         console.error('Error:', error);
