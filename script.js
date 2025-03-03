@@ -70,22 +70,22 @@ async function updateTracker() {
             </tr>
         `).join('');
 
-        // Process historical prices with more flexible date parsing
+        // Process historical prices with correct column names
         const priceData = historicalPrices.map(row => {
             // Log the raw row for debugging
             console.log('Historical Price Row:', row);
 
-            // Try different timestamp formats
-            let timestamp = new Date(row.Timestamp + ' UTC');
+            // Use correct column name 'Date'
+            let timestamp = new Date(row.Date + ' UTC');
             if (isNaN(timestamp)) {
-                timestamp = new Date(row.Timestamp);
+                timestamp = new Date(row.Date);
             }
             if (isNaN(timestamp)) {
-                timestamp = new Date(Date.parse(row.Timestamp));
+                timestamp = new Date(Date.parse(row.Date));
             }
 
-            // Clean the price by removing any non-numeric characters
-            const price = parseFloat(row.Close.replace(/[^0-9.]/g, ''));
+            // Use correct column name 'Price' and clean it
+            const price = parseFloat(row.Price.replace(/[^0-9.]/g, ''));
             return { x: timestamp, y: price };
         }).filter(point => {
             const isValid = !isNaN(point.x) && !isNaN(point.y);
@@ -152,7 +152,7 @@ async function updateTracker() {
                         type: 'time',
                         time: {
                             unit: 'month',
-                            displayFormats: { month: 'MMM yyyy' } // Ensure this is lowercase yyyy
+                            displayFormats: { month: 'MMM yyyy' }
                         },
                         title: {
                             display: true,
