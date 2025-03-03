@@ -3,10 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>$BTC Stack Tracker</title>
+  <title>My $BTC Tracker</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <!-- Add noUiSlider CSS and JS with defer -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css" rel="stylesheet">
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
   <style>
     body {
       font-family: 'Arial', sans-serif;
@@ -154,8 +157,11 @@
       </table>
     </div>
     <div class="chart-container">
+      <h2>Bitcoin Price and Purchases Over Time</h2>
       <div id="chart-error" class="error"></div>
       <canvas id="priceChart"></canvas>
+      <div id="date-range-slider" style="margin: 20px 0;"></div>
+      <div id="date-range-labels" style="display: flex; justify-content: space-between; color: #ffffff; font-size: 0.9em;"></div>
     </div>
     <button onclick="updateTracker()">Refresh</button>
   </div>
