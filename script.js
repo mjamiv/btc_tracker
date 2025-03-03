@@ -264,8 +264,8 @@ async function updateTracker() {
                     {
                         label: 'Cumulative Gain (USD)',
                         data: originalGainData,
-                        borderColor: '#ff5555',
-                        backgroundColor: 'rgba(255, 85, 85, 0.1)',
+                        borderColor: '#39FF14', // Neon Green instead of red
+                        backgroundColor: 'rgba(57, 255, 20, 0.1)', // Semi-transparent Neon Green
                         fill: false,
                         tension: 0.3,
                         pointRadius: 0,
