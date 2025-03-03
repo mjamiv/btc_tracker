@@ -3,19 +3,6 @@
 // Variable to hold the chart instance
 let priceChart = null;
 
-// Placeholder historical data for October 2023 to January 27, 2024 (approximate prices)
-const placeholderHistoricalData = [
-  { timestamp: new Date('2023-10-02T00:00:00.000Z').getTime(), price: 27000 },
-  { timestamp: new Date('2023-10-15T00:00:00.000Z').getTime(), price: 28000 },
-  { timestamp: new Date('2023-11-01T00:00:00.000Z').getTime(), price: 29000 },
-  { timestamp: new Date('2023-11-15T00:00:00.000Z').getTime(), price: 31000 },
-  { timestamp: new Date('2023-12-01T00:00:00.000Z').getTime(), price: 33000 },
-  { timestamp: new Date('2023-12-15T00:00:00.000Z').getTime(), price: 35000 },
-  { timestamp: new Date('2024-01-01T00:00:00.000Z').getTime(), price: 38000 },
-  { timestamp: new Date('2024-01-15T00:00:00.000Z').getTime(), price: 40000 },
-  { timestamp: new Date('2024-01-27T00:00:00.000Z').getTime(), price: 42035 } // Matches the first date in historical_btc_prices.csv
-];
-
 // Function to get or update historical prices from localStorage
 async function getHistoricalPrices() {
   // Fetch the historical price CSV
@@ -28,14 +15,11 @@ async function getHistoricalPrices() {
     header: true,
     complete: (result) => {
       historicalData = result.data.map(row => ({
-        timestamp: new Date(row.timestamp).getTime(),
+        timestamp: new Date(row.timestamp + ' UTC').getTime(), // Explicitly parse as UTC
         price: parseFloat(row.close)
       })).filter(row => !isNaN(row.timestamp) && !isNaN(row.price)); // Filter out invalid rows
     }
   });
-
-  // Prepend placeholder data to cover October 2023 to January 27, 2024
-  historicalData = [...placeholderHistoricalData, ...historicalData];
 
   // Store in localStorage or retrieve existing appended data
   const storedData = localStorage.getItem('btcHistoricalPrices');
@@ -44,7 +28,7 @@ async function getHistoricalPrices() {
   // Get the last date in the dataset
   const lastDate = new Date(prices[prices.length - 1].timestamp);
   const today = new Date();
-  today.setUTCHours(0, 0, 0, 0); // Normalize to midnight UTC
+  today.setHours(0, 0, 0, 0); // Normalize to midnight
 
   // If the last date is before today, fetch the current price and append
   if (lastDate < today) {
@@ -124,7 +108,7 @@ async function updateTracker() {
 
         // Render chart
         try {
-          // Get historical prices (from CSV + appended + placeholder)
+          // Get historical prices (from CSV + appended)
           const historicalData = await getHistoricalPrices();
           console.log('Historical Data:', historicalData); // Debug
 
@@ -135,33 +119,30 @@ async function updateTracker() {
           console.log('Price Data Points:', priceDataPoints); // Debug
 
           // Prepare purchase data for plotting
-          const purchaseDataPoints = purchases.map(p => {
-            const cost = parseFloat(p["Total (inclusive of fees and/or spread)"].replace('$', ''));
-            const purchaseDate = normalizeDate(new Date(p.Timestamp));
-            return {
-              date: purchaseDate,
-              cost: cost,
-              btc: parseFloat(p["Quantity Transacted"]),
-              size: Math.sqrt(cost) * 0.5 + 3 // Adjusted scaling for green dots
-            };
-          });
+          const earliestPriceDate = new Date(priceDataPoints[0].date);
+          console.log('Earliest Price Date:', earliestPriceDate); // Debug
+
+          const purchaseDataPoints = purchases
+            .filter(p => {
+              const purchaseDate = new Date(p.Timestamp + ' UTC');
+              console.log('Purchase Date (raw):', p.Timestamp, 'Parsed:', purchaseDate); // Debug
+              return purchaseDate >= earliestPriceDate;
+            })
+            .map(p => {
+              const cost = parseFloat(p["Total (inclusive of fees and/or spread)"].replace('$', ''));
+              const purchaseDate = normalizeDate(new Date(p.Timestamp + ' UTC'));
+              return {
+                date: purchaseDate,
+                cost: cost,
+                btc: parseFloat(p["Quantity Transacted"]),
+                size: Math.sqrt(cost) * 0.5 + 3 // Adjusted scaling for green dots
+              };
+            });
           console.log('Purchase Data Points:', purchaseDataPoints); // Debug
 
-          // Find the corresponding price for each purchase (with fallback to closest date)
+          // Find the corresponding price for each purchase
           const purchasePrices = purchaseDataPoints.map(p => {
-            let matchingPrice = priceDataPoints.find(hp => hp.date.getTime() === p.date.getTime());
-            if (!matchingPrice) {
-              // Fallback: Find the closest date
-              matchingPrice = priceDataPoints.reduce((closest, hp) => {
-                const hpDate = hp.date.getTime();
-                const pDate = p.date.getTime();
-                const diff = Math.abs(hpDate - pDate);
-                if (!closest || diff < closest.diff) {
-                  return { diff, price: hp.price, date: hp.date };
-                }
-                return closest;
-              }, null);
-            }
+            const matchingPrice = priceDataPoints.find(hp => hp.date.getTime() === p.date.getTime());
             console.log('Matching Purchase:', p.date, 'Historical Price Date:', matchingPrice ? matchingPrice.date : 'No match', 'Price:', matchingPrice ? matchingPrice.price : 'N/A', 'Size:', p.size); // Debug
             return {
               ...p,
@@ -198,7 +179,7 @@ async function updateTracker() {
                   type: 'scatter',
                   backgroundColor: '#00ff00',
                   pointRadius: purchasePrices.map(p => p.size),
-                  pointHoverRadius: purchasePrices.map(p => p.size + 2),
+                  pointHoverRadius: purchasePrices.map(p => p.size + 2), // Slightly larger on hover
                   yAxisID: 'y'
                 }
               ]
