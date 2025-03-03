@@ -264,7 +264,7 @@ async function updateTracker() {
             type: 'line',
             data: {
                 datasets: [
-                    {                   {
+                    {                   
                         label: 'My Purchases',
                         data: originalPurchaseData,
                         type: 'scatter',
