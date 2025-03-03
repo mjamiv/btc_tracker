@@ -3,10 +3,14 @@
 // Variable to hold the chart instance
 let priceChart = null;
 
+// Clear localStorage on load to avoid stale data
+localStorage.removeItem('btcHistoricalPrices');
+console.log('localStorage cleared');
+
 // Function to get or update historical prices from localStorage
 async function getHistoricalPrices() {
-  // Fetch the historical price CSV
-  const csvResponse = await fetch('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/historical_btc_prices.csv');
+  // Fetch the historical price CSV with cache-busting
+  const csvResponse = await fetch('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/historical_btc_prices.csv?cache=' + new Date().getTime());
   if (!csvResponse.ok) throw new Error('Failed to load historical_btc_prices.csv');
   const csvText = await csvResponse.text();
 
@@ -60,8 +64,8 @@ function normalizeDate(date) {
 
 async function updateTracker() {
   try {
-    // Fetch transactions CSV
-    const csvResponse = await fetch('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/transactions.csv');
+    // Fetch transactions CSV with cache-busting
+    const csvResponse = await fetch('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/transactions.csv?cache=' + new Date().getTime());
     if (!csvResponse.ok) throw new Error('Failed to load transactions.csv');
     const csvText = await csvResponse.text();
 
@@ -119,13 +123,18 @@ async function updateTracker() {
 
           // Prepare purchase data for plotting
           const earliestPriceDate = new Date(priceDataPoints[0].date);
-          console.log('Earliest Price Date:', earliestPriceDate); // Debug
+          const latestPriceDate = new Date(priceDataPoints[priceDataPoints.length - 1].date);
+          console.log('Earliest Price Date:', earliestPriceDate, 'Latest Price Date:', latestPriceDate); // Debug
 
           const purchaseDataPoints = purchases
             .filter(p => {
               const purchaseDate = new Date(p.Timestamp + ' UTC');
               console.log('Purchase Date (raw):', p.Timestamp, 'Parsed:', purchaseDate); // Debug
-              return purchaseDate >= earliestPriceDate;
+              const isWithinRange = purchaseDate >= earliestPriceDate && purchaseDate <= latestPriceDate;
+              if (!isWithinRange) {
+                console.warn(`Purchase at ${p.Timestamp} is outside historical price range and will not be plotted.`);
+              }
+              return isWithinRange;
             })
             .map(p => {
               const cost = parseFloat(p["Total (inclusive of fees and/or spread)"].replace('$', ''));
@@ -139,9 +148,22 @@ async function updateTracker() {
             });
           console.log('Purchase Data Points:', purchaseDataPoints); // Debug
 
-          // Find the corresponding price for each purchase
+          // Find the corresponding price for each purchase with a fallback
           const purchasePrices = purchaseDataPoints.map(p => {
-            const matchingPrice = priceDataPoints.find(hp => hp.date.getTime() === p.date.getTime());
+            // Try exact match first
+            let matchingPrice = priceDataPoints.find(hp => hp.date.getTime() === p.date.getTime());
+            // If no exact match, find the closest date
+            if (!matchingPrice) {
+              matchingPrice = priceDataPoints.reduce((closest, hp) => {
+                const hpDate = hp.date.getTime();
+                const pDate = p.date.getTime();
+                const diff = Math.abs(hpDate - pDate);
+                if (!closest || diff < closest.diff) {
+                  return { diff, price: hp.price, date: hp.date };
+                }
+                return closest;
+              }, null);
+            }
             console.log('Matching Purchase:', p.date, 'Historical Price Date:', matchingPrice ? matchingPrice.date : 'No match', 'Price:', matchingPrice ? matchingPrice.price : 'N/A', 'Size:', p.size); // Debug
             return {
               ...p,
