@@ -126,10 +126,10 @@ function initializeSlider(minDate, maxDate) {
                 filterDataByDateRange(startDate, endDate);
             });
 
-            // Initial label update
+            // Initial label update (fixed typo: endDate -> maxDate)
             labels.innerHTML = `
                 <span>${minDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
-                <span>${endDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+                <span>${maxDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
             `;
         } else if (retries < maxRetries) {
             retries++;
@@ -268,8 +268,8 @@ async function updateTracker() {
                         label: 'BTC Price (USD)',
                         data: originalPriceData,
                         borderColor: '#ffffff', // White
-                        backgroundColor: 'rgba(255, 255, 255, 0.03)', // Very transparent white fill
-                        fill: true,
+                        backgroundColor: 'rgba(255, 255, 255, 0.03)', // Very transparent white (not used since fill is false)
+                        fill: false, // Disable fill to ensure scatter points are fully visible
                         tension: 0.3,
                         pointRadius: 0,
                         yAxisID: 'y'
