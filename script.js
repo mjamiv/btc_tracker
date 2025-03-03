@@ -17,15 +17,7 @@ async function fetchCSV(url) {
 
 // Get current BTC price (hardcoded for now to match expected value)
 async function getCurrentBtcPrice() {
-    // For testing, use the expected price of $93,162.00
     return 93162.00;
-
-    // Uncomment to fetch from API and debug
-    // const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
-    // if (!response.ok) throw new Error('Failed to fetch BTC price');
-    // const data = await response.json();
-    // console.log('Current BTC Price from API:', data.bitcoin.usd); // Debug
-    // return data.bitcoin.usd;
 }
 
 // Update the tracker
@@ -38,7 +30,6 @@ async function updateTracker() {
 
         // Process transactions with stricter parsing
         const purchases = transactions.map(p => {
-            // Clean the total cost by removing $ and any extra characters
             const totalCostStr = p["Total (inclusive of fees and/or spread)"].replace(/[^0-9.]/g, '');
             const priceAtTransactionStr = p["Price at Transaction"].replace(/[^0-9.]/g, '');
             return {
@@ -49,9 +40,6 @@ async function updateTracker() {
             };
         });
 
-        // Log purchases for debugging
-        console.log('Parsed Purchases:', purchases);
-
         // Calculate metrics
         const totalBtc = purchases.reduce((sum, p) => sum + p.quantity, 0);
         const totalInvested = purchases.reduce((sum, p) => sum + p.totalCost, 0);
@@ -60,15 +48,15 @@ async function updateTracker() {
         const gainLoss = currentValue - totalInvested;
         const gainLossPercent = totalInvested > 0 ? (gainLoss / totalInvested) * 100 : 0;
 
-        // Update summary
-        document.getElementById('summary').innerHTML = `
-            <p>Total BTC: ${totalBtc.toFixed(8)}</p>
-            <p>Total Invested: $${totalInvested.toFixed(2)}</p>
-            <p>Cost Basis: $${costBasis.toFixed(2)}</p>
-            <p>Current Value: $${currentValue.toFixed(2)}</p>
-            <p>Gain/Loss: <span class="${gainLoss >= 0 ? 'positive' : 'negative'}">
+        // Update summary stats individually
+        document.getElementById('total-btc').innerText = totalBtc.toFixed(8);
+        document.getElementById('invested').innerText = `$${totalInvested.toFixed(2)}`;
+        document.getElementById('cost-basis').innerText = `$${costBasis.toFixed(2)}`;
+        document.getElementById('current-value').innerText = `$${currentValue.toFixed(2)}`;
+        document.getElementById('gain-loss').innerHTML = `
+            <span class="${gainLoss >= 0 ? 'positive' : 'negative'}">
                 ${gainLoss >= 0 ? '+' : ''}$${gainLoss.toFixed(2)} (${gainLossPercent.toFixed(2)}%)
-            </span></p>
+            </span>
         `;
 
         // Populate transactions table
