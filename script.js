@@ -73,6 +73,62 @@ function filterDataByDateRange(startDate, endDate) {
     priceChart.update();
 }
 
+// Function to initialize the slider with retry logic
+function initializeSlider(minDate, maxDate) {
+    const slider = document.getElementById('date-range-slider');
+    const labels = document.getElementById('date-range-labels');
+    const maxRetries = 10;
+    let retries = 0;
+
+    function tryInitializeSlider() {
+        if (typeof noUiSlider !== 'undefined') {
+            noUiSlider.create(slider, {
+                start: [minDate.getTime(), maxDate.getTime()],
+                connect: true,
+                range: {
+                    'min': minDate.getTime(),
+                    'max': maxDate.getTime()
+                },
+                step: 24 * 60 * 60 * 1000, // Step by day
+                behaviour: 'drag'
+            });
+
+            // Update labels and chart on slider change
+            slider.noUiSlider.on('update', (values) => {
+                const startDate = new Date(parseInt(values[0]));
+                const endDate = new Date(parseInt(values[1]));
+                
+                // Update labels
+                labels.innerHTML = `
+                    <span>${startDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+                    <span>${endDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+                `;
+
+                // Filter chart data
+                filterDataByDateRange(startDate, endDate);
+            });
+
+            // Initial label update
+            labels.innerHTML = `
+                <span>${minDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+                <span>${maxDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+            `;
+        } else if (retries < maxRetries) {
+            retries++;
+            console.log(`Retrying slider initialization (${retries}/${maxRetries})...`);
+            setTimeout(tryInitializeSlider, 500); // Retry after 500ms
+        } else {
+            console.error('Failed to load noUiSlider after maximum retries.');
+            document.getElementById('chart-error').innerText = 'Error: Date range slider not available - failed to load noUiSlider library.';
+            // Hide the slider container
+            slider.style.display = 'none';
+            labels.style.display = 'none';
+        }
+    }
+
+    tryInitializeSlider();
+}
+
 // Update the tracker
 async function updateTracker() {
     try {
@@ -245,8 +301,7 @@ async function updateTracker() {
                             color: '#ffffff',
                             callback: value => `$${value.toLocaleString()}`
                         },
-                        // Scale down the secondary axis to prevent intersection
-                        suggestedMax: 10000, // Adjust this value to scale down the gain axis
+                        suggestedMax: 10000,
                         suggestedMin: -5000
                     }
                 },
@@ -274,46 +329,10 @@ async function updateTracker() {
             }
         });
 
-        // Initialize date range slider with error handling
-        try {
-            const minDate = new Date(Math.min(...originalPriceData.map(d => d.x)));
-            const maxDate = new Date(Math.max(...originalPriceData.map(d => d.x)));
-            const slider = document.getElementById('date-range-slider');
-            const labels = document.getElementById('date-range-labels');
-
-            if (typeof noUiSlider === 'undefined') {
-                throw new Error('noUiSlider library is not loaded.');
-            }
-
-            noUiSlider.create(slider, {
-                start: [minDate.getTime(), maxDate.getTime()],
-                connect: true,
-                range: {
-                    'min': minDate.getTime(),
-                    'max': maxDate.getTime()
-                },
-                step: 24 * 60 * 60 * 1000, // Step by day
-                behaviour: 'drag'
-            });
-
-            // Update labels and chart on slider change
-            slider.noUiSlider.on('update', (values) => {
-                const startDate = new Date(parseInt(values[0]));
-                const endDate = new Date(parseInt(values[1]));
-                
-                // Update labels
-                labels.innerHTML = `
-                    <span>${startDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
-                    <span>${endDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
-                `;
-
-                // Filter chart data
-                filterDataByDateRange(startDate, endDate);
-            });
-        } catch (sliderError) {
-            console.error('Slider Initialization Error:', sliderError);
-            document.getElementById('chart-error').innerText = `Error: Failed to initialize date range slider - ${sliderError.message}`;
-        }
+        // Initialize date range slider with retry logic
+        const minDate = new Date(Math.min(...originalPriceData.map(d => d.x)));
+        const maxDate = new Date(Math.max(...originalPriceData.map(d => d.x)));
+        initializeSlider(minDate, maxDate);
     } catch (error) {
         console.error('Error:', error);
         document.getElementById('chart-error').innerText = `Error: ${error.message}`;
