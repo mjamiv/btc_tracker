@@ -254,10 +254,10 @@ async function updateTracker() {
                         label: 'My Purchases',
                         data: originalPurchaseData,
                         type: 'scatter',
-                        backgroundColor: '#F7931A', // Bitcoin Orange instead of green
+                        backgroundColor: '#F7931A', // Bitcoin Orange
                         pointRadius: 6,
                         pointHoverRadius: 8,
-                        borderColor: '#ffffff',
+                        borderColor: '#000000', // Black instead of white
                         borderWidth: 1,
                         yAxisID: 'y'
                     },
