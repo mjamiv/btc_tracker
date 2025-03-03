@@ -76,7 +76,7 @@ async function updateTracker() {
             console.log('Historical Price Row:', row);
 
             // Try different timestamp formats
-            let timestamp = new Date(row.Timestamp + ' UTC'); // Updated to row.Timestamp
+            let timestamp = new Date(row.Timestamp + ' UTC');
             if (isNaN(timestamp)) {
                 timestamp = new Date(row.Timestamp);
             }
@@ -85,7 +85,7 @@ async function updateTracker() {
             }
 
             // Clean the price by removing any non-numeric characters
-            const price = parseFloat(row.Close.replace(/[^0-9.]/g, '')); // Updated to row.Close
+            const price = parseFloat(row.Close.replace(/[^0-9.]/g, ''));
             return { x: timestamp, y: price };
         }).filter(point => {
             const isValid = !isNaN(point.x) && !isNaN(point.y);
@@ -152,7 +152,7 @@ async function updateTracker() {
                         type: 'time',
                         time: {
                             unit: 'month',
-                            displayFormats: { month: 'MMM yyyy' } // Updated to use lowercase yyyy
+                            displayFormats: { month: 'MMM yyyy' } // Ensure this is lowercase yyyy
                         },
                         title: {
                             display: true,
