@@ -69,9 +69,8 @@ async function updateTracker() {
     Papa.parse(csvText, {
       header: true,
       complete: async (result) => {
-        const purchases = result.data.filter(row => 
-          row["Transaction Type"] === "Buy" || row["Transaction Type"] === "Advanced Trade Buy"
-        );
+        // No Transaction Type to filter; assume all rows are purchases
+        const purchases = result.data;
 
         // Calculations
         const totalBtc = purchases.reduce((sum, p) => sum + parseFloat(p["Quantity Transacted"] || 0), 0);
@@ -135,7 +134,7 @@ async function updateTracker() {
                 date: purchaseDate,
                 cost: cost,
                 btc: parseFloat(p["Quantity Transacted"]),
-                size: Math.sqrt(cost) * 0.5 + 3 // Adjusted scaling for green dots
+                size: Math.sqrt(cost) * 0.5 + 2 // Adjusted scaling for green dots
               };
             });
           console.log('Purchase Data Points:', purchaseDataPoints); // Debug
