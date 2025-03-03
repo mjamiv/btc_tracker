@@ -76,17 +76,16 @@ async function updateTracker() {
             console.log('Historical Price Row:', row);
 
             // Try different timestamp formats
-            let timestamp = new Date(row.timestamp + ' UTC');
+            let timestamp = new Date(row.Timestamp + ' UTC'); // Updated to row.Timestamp
             if (isNaN(timestamp)) {
-                // Try without appending UTC (e.g., if timestamp is already in a different format like YYYY-MM-DD)
-                timestamp = new Date(row.timestamp);
+                timestamp = new Date(row.Timestamp);
             }
             if (isNaN(timestamp)) {
-                // Try a more generic parser (e.g., for formats like "2022-01-01T00:00:00Z")
-                timestamp = new Date(Date.parse(row.timestamp));
+                timestamp = new Date(Date.parse(row.Timestamp));
             }
 
-            const price = parseFloat(row.close);
+            // Clean the price by removing any non-numeric characters
+            const price = parseFloat(row.Close.replace(/[^0-9.]/g, '')); // Updated to row.Close
             return { x: timestamp, y: price };
         }).filter(point => {
             const isValid = !isNaN(point.x) && !isNaN(point.y);
@@ -96,7 +95,7 @@ async function updateTracker() {
             return isValid;
         });
 
-        // Process purchase data (already working)
+        // Process purchase data
         const purchaseData = purchases.map(p => {
             const timestamp = new Date(p.timestamp + ' UTC');
             return {
@@ -113,7 +112,8 @@ async function updateTracker() {
 
         if (priceData.length === 0) {
             document.getElementById('chart-error').innerText = 'Error: No valid historical price data available to plot.';
-        } else if (purchaseData.length === 0) {
+        }
+        if (purchaseData.length === 0) {
             document.getElementById('chart-error').innerText = 'Error: No valid purchase data available to plot.';
         }
 
@@ -152,7 +152,7 @@ async function updateTracker() {
                         type: 'time',
                         time: {
                             unit: 'month',
-                            displayFormats: { month: 'MMM YYYY' }
+                            displayFormats: { month: 'MMM yyyy' } // Updated to use lowercase yyyy
                         },
                         title: {
                             display: true,
