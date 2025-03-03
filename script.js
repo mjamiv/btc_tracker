@@ -301,8 +301,8 @@ async function updateTracker() {
                             color: '#ffffff',
                             callback: value => `$${value.toLocaleString()}`
                         },
-                        suggestedMax: 10000,
-                        suggestedMin: -5000
+                        suggestedMax: 100000,
+                        suggestedMin: 0
                     }
                 },
                 plugins: {
