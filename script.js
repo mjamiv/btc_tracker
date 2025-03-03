@@ -126,7 +126,7 @@ function initializeSlider(minDate, maxDate) {
                 filterDataByDateRange(startDate, endDate);
             });
 
-            // Initial label update (fixed typo: endDate -> maxDate)
+            // Initial label update
             labels.innerHTML = `
                 <span>${minDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
                 <span>${maxDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
@@ -194,7 +194,8 @@ async function updateTracker() {
         document.getElementById('current-value').innerText = `$${currentValue.toFixed(2)}`;
         document.getElementById('gain-loss').innerHTML = `
             <span class="${gainLoss >= 0 ? 'positive' : 'negative'}">
-                ${gainLoss >= 0 ? '+' : ''}$${gainLoss.toFixed(2)} (${gainLossPercent.toFixed(2)}%)
+                ${gainLoss >= 0 ? '+' : ''}$${gainLoss.toFixed(2)}
+                <span class="percentage">(${gainLossPercent.toFixed(2)}%)</span>
             </span>
         `;
 
@@ -225,9 +226,9 @@ async function updateTracker() {
             const btcFraction = btcRatio > 0 ? Math.log1p(btcRatio) / Math.log1p(1) : 0;
             // Scale the radius between 4 (min) and 20 (max) based on btcFraction
             const minRadius = 4;
-            const maxRadius = 20; // Increased max radius for more noticeable scaling
+            const maxRadius = 20;
             const radius = minRadius + btcFraction * (maxRadius - minRadius);
-            const hoverRadius = radius + 2; // Slightly larger on hover
+            const hoverRadius = radius + 2;
 
             // Debug the scaling calculation
             console.log(`Purchase BTC: ${p.quantity}, Ratio: ${btcRatio}, Log Fraction: ${btcFraction}, Radius: ${radius}`);
@@ -267,29 +268,29 @@ async function updateTracker() {
                     {
                         label: 'BTC Price (USD)',
                         data: originalPriceData,
-                        borderColor: '#ffffff', // White
-                        backgroundColor: 'rgba(255, 255, 255, 0.03)', // Very transparent white (not used since fill is false)
-                        fill: false, // Disable fill to ensure scatter points are fully visible
+                        borderColor: '#ffffff',
+                        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                        fill: false,
                         tension: 0.3,
                         pointRadius: 0,
                         yAxisID: 'y'
                     },
-                    {                   
+                    {
                         label: 'My Purchases',
                         data: originalPurchaseData,
                         type: 'scatter',
-                        backgroundColor: '#F7931A', // Bitcoin Orange
-                        pointRadius: originalPurchaseData.map(p => p.radius), // Dynamic radius based on BTC quantity
-                        pointHoverRadius: originalPurchaseData.map(p => p.hoverRadius), // Dynamic hover radius
-                        borderColor: '#000000', // Black border
+                        backgroundColor: '#F7931A',
+                        pointRadius: originalPurchaseData.map(p => p.radius),
+                        pointHoverRadius: originalPurchaseData.map(p => p.hoverRadius),
+                        borderColor: '#000000',
                         borderWidth: 1,
                         yAxisID: 'y'
                     },
                     {
                         label: 'Cumulative Gain (USD)',
                         data: originalGainData,
-                        borderColor: '#39FF14', // Neon Green
-                        backgroundColor: 'rgba(57, 255, 20, 0.1)', // Semi-transparent Neon Green
+                        borderColor: '#39FF14',
+                        backgroundColor: 'rgba(57, 255, 20, 0.1)',
                         fill: false,
                         tension: 0.3,
                         pointRadius: 0,
