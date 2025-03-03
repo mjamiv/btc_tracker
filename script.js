@@ -35,7 +35,7 @@ async function getCurrentBtcPrice() {
     } catch (error) {
         console.error('Error fetching BTC price:', error);
         // Fallback to a default value if the API fails
-        return 93162.00; // You can adjust this fallback value as needed
+        return 93162.00; // Fallback value
     }
 }
 
@@ -243,8 +243,8 @@ async function updateTracker() {
                     {
                         label: 'BTC Price (USD)',
                         data: originalPriceData,
-                        borderColor: '#ffd700',
-                        backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                        borderColor: '#ffffff', // White instead of gold
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)', // Semi-transparent white fill
                         fill: true,
                         tension: 0.3,
                         pointRadius: 0,
@@ -257,14 +257,14 @@ async function updateTracker() {
                         backgroundColor: '#F7931A', // Bitcoin Orange
                         pointRadius: 6,
                         pointHoverRadius: 8,
-                        borderColor: '#000000', // Black instead of white
+                        borderColor: '#000000', // Black border
                         borderWidth: 1,
                         yAxisID: 'y'
                     },
                     {
                         label: 'Cumulative Gain (USD)',
                         data: originalGainData,
-                        borderColor: '#39FF14', // Neon Green instead of red
+                        borderColor: '#39FF14', // Neon Green
                         backgroundColor: 'rgba(57, 255, 20, 0.1)', // Semi-transparent Neon Green
                         fill: false,
                         tension: 0.3,
