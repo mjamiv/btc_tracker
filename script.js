@@ -18,24 +18,34 @@ async function fetchCSV(url) {
     });
 }
 
-// Fetch the current BTC price from CoinGecko API
-async function getCurrentBtcPrice() {
+// Fetch the current BTC price and metrics from CoinGecko API
+async function getBtcMetrics() {
     try {
-        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+        const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin');
         if (!response.ok) {
-            throw new Error(`Failed to fetch BTC price: ${response.status} ${response.statusText}`);
+            throw new Error(`Failed to fetch BTC metrics: ${response.status} ${response.statusText}`);
         }
         const data = await response.json();
-        const btcPrice = data.bitcoin.usd;
-        if (typeof btcPrice !== 'number' || isNaN(btcPrice)) {
-            throw new Error('Invalid BTC price received from API');
+        if (!data || data.length === 0) {
+            throw new Error('Invalid BTC metrics received from API');
         }
-        console.log(`Fetched current BTC price: $${btcPrice}`);
-        return btcPrice;
+        const btcData = data[0];
+        console.log('Fetched BTC metrics:', btcData);
+        return {
+            currentPrice: btcData.current_price,
+            marketCap: btcData.market_cap,
+            volume24h: btcData.total_volume,
+            priceChange24h: btcData.price_change_percentage_24h
+        };
     } catch (error) {
-        console.error('Error fetching BTC price:', error);
-        // Fallback to a default value if the API fails
-        return 93162.00; // Fallback value
+        console.error('Error fetching BTC metrics:', error);
+        // Fallback values if the API fails
+        return {
+            currentPrice: 93162.00,
+            marketCap: 0,
+            volume24h: 0,
+            priceChange24h: 0
+        };
     }
 }
 
@@ -153,7 +163,8 @@ async function updateTracker() {
         // Load data
         const transactions = await fetchCSV('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/transactions.csv');
         const historicalPrices = await fetchCSV('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/historical_btc_prices.csv');
-        const currentPrice = await getCurrentBtcPrice();
+        const btcMetrics = await getBtcMetrics();
+        const currentPrice = btcMetrics.currentPrice;
 
         // Process transactions with stricter parsing
         const purchases = transactions.map((p, index) => {
@@ -187,15 +198,25 @@ async function updateTracker() {
         const gainLoss = currentValue - totalInvested;
         const gainLossPercent = totalInvested > 0 ? (gainLoss / totalInvested) * 100 : 0;
 
-        // Update summary stats individually
+        // Update summary stats with formatted currencies
         document.getElementById('total-btc').innerText = totalBtc.toFixed(8);
-        document.getElementById('invested').innerText = `$${totalInvested.toFixed(2)}`;
-        document.getElementById('cost-basis').innerText = `$${costBasis.toFixed(2)}`;
-        document.getElementById('current-value').innerText = `$${currentValue.toFixed(2)}`;
+        document.getElementById('invested').innerText = totalInvested.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        document.getElementById('cost-basis').innerText = costBasis.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        document.getElementById('current-value').innerText = currentValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
         document.getElementById('gain-loss').innerHTML = `
             <span class="${gainLoss >= 0 ? 'positive' : 'negative'}">
-                ${gainLoss >= 0 ? '+' : ''}$${gainLoss.toFixed(2)}
+                ${gainLoss >= 0 ? '+' : ''}${gainLoss.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                 <span class="percentage">(${gainLossPercent.toFixed(2)}%)</span>
+            </span>
+        `;
+
+        // Update BTC metrics
+        document.getElementById('btc-price').innerText = currentPrice.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        document.getElementById('btc-market-cap').innerText = btcMetrics.marketCap.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        document.getElementById('btc-volume').innerText = btcMetrics.volume24h.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        document.getElementById('btc-price-change').innerHTML = `
+            <span class="${btcMetrics.priceChange24h >= 0 ? 'positive' : 'negative'}">
+                ${btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)}%
             </span>
         `;
 
@@ -205,8 +226,8 @@ async function updateTracker() {
             <tr>
                 <td>${p.timestamp}</td>
                 <td>${p.quantity.toFixed(8)}</td>
-                <td>$${p.totalCost.toFixed(2)}</td>
-                <td>$${p.priceAtTransaction.toFixed(2)}</td>
+                <td>$${p.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                <td>$${p.priceAtTransaction.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
             </tr>
         `).join('');
 
@@ -358,7 +379,7 @@ async function updateTracker() {
                             label: ctx => {
                                 if (ctx.dataset.label === 'My Purchases') {
                                     const p = originalPurchaseData[ctx.dataIndex];
-                                    return `Bought ${p.quantity.toFixed(8)} BTC for $${p.cost.toFixed(2)}`;
+                                    return `Bought ${p.quantity.toFixed(8)} BTC for $${p.cost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
                                 } else if (ctx.dataset.label === 'Cumulative Gain (USD)') {
                                     return `Gain: $${ctx.parsed.y.toLocaleString()}`;
                                 }
