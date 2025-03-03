@@ -70,18 +70,52 @@ async function updateTracker() {
             </tr>
         `).join('');
 
-        // Prepare chart data
-        const priceData = historicalPrices.map(row => ({
-            x: new Date(row.timestamp + ' UTC'),
-            y: parseFloat(row.close)
-        }));
+        // Process historical prices with more flexible date parsing
+        const priceData = historicalPrices.map(row => {
+            // Log the raw row for debugging
+            console.log('Historical Price Row:', row);
 
-        const purchaseData = purchases.map(p => ({
-            x: new Date(p.timestamp + ' UTC'),
-            y: p.priceAtTransaction,
-            quantity: p.quantity,
-            cost: p.totalCost
-        }));
+            // Try different timestamp formats
+            let timestamp = new Date(row.timestamp + ' UTC');
+            if (isNaN(timestamp)) {
+                // Try without appending UTC (e.g., if timestamp is already in a different format like YYYY-MM-DD)
+                timestamp = new Date(row.timestamp);
+            }
+            if (isNaN(timestamp)) {
+                // Try a more generic parser (e.g., for formats like "2022-01-01T00:00:00Z")
+                timestamp = new Date(Date.parse(row.timestamp));
+            }
+
+            const price = parseFloat(row.close);
+            return { x: timestamp, y: price };
+        }).filter(point => {
+            const isValid = !isNaN(point.x) && !isNaN(point.y);
+            if (!isValid) {
+                console.log('Filtered out invalid historical price point:', point);
+            }
+            return isValid;
+        });
+
+        // Process purchase data (already working)
+        const purchaseData = purchases.map(p => {
+            const timestamp = new Date(p.timestamp + ' UTC');
+            return {
+                x: timestamp,
+                y: p.priceAtTransaction,
+                quantity: p.quantity,
+                cost: p.totalCost
+            };
+        }).filter(point => !isNaN(point.x) && !isNaN(point.y));
+
+        // Debug chart data
+        console.log('Historical Price Data:', priceData);
+        console.log('Purchase Data:', purchaseData);
+
+        if (priceData.length === 0) {
+            document.getElementById('chart-error').innerText = 'Error: No valid historical price data available to plot.';
+        } else if (purchaseData.length === 0) {
+            document.getElementById('chart-error').innerText = 'Error: No valid purchase data available to plot.';
+        }
 
         // Render chart
         const ctx = document.getElementById('priceChart').getContext('2d');
@@ -91,35 +125,73 @@ async function updateTracker() {
             data: {
                 datasets: [
                     {
-                        label: 'BTC Price',
+                        label: 'BTC Price (USD)',
                         data: priceData,
                         borderColor: '#ffd700',
-                        fill: false,
-                        tension: 0.1
+                        backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0
                     },
                     {
-                        label: 'Purchases',
+                        label: 'My Purchases',
                         data: purchaseData,
                         type: 'scatter',
                         backgroundColor: '#00ff00',
-                        pointRadius: 5
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        borderColor: '#ffffff',
+                        borderWidth: 1
                     }
                 ]
             },
             options: {
+                responsive: true,
                 scales: {
-                    x: { type: 'time', time: { unit: 'month' } },
-                    y: { title: { display: true, text: 'Price (USD)' } }
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'month',
+                            displayFormats: { month: 'MMM YYYY' }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Date',
+                            color: '#ffffff',
+                            font: { size: 14 }
+                        },
+                        grid: { color: '#444' },
+                        ticks: { color: '#ffffff' }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Price (USD)',
+                            color: '#ffffff',
+                            font: { size: 14 }
+                        },
+                        grid: { color: '#444' },
+                        ticks: {
+                            color: '#ffffff',
+                            callback: value => `$${value.toLocaleString()}`
+                        }
+                    }
                 },
                 plugins: {
+                    legend: {
+                        labels: { color: '#ffffff', font: { size: 12 } }
+                    },
                     tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: '#ffffff',
+                        bodyColor: '#ffffff',
                         callbacks: {
                             label: ctx => {
-                                if (ctx.dataset.label === 'Purchases') {
+                                if (ctx.dataset.label === 'My Purchases') {
                                     const p = purchaseData[ctx.dataIndex];
                                     return `Bought ${p.quantity.toFixed(8)} BTC for $${p.cost.toFixed(2)}`;
                                 }
-                                return `Price: $${ctx.parsed.y.toFixed(2)}`;
+                                return `Price: $${ctx.parsed.y.toLocaleString()}`;
                             }
                         }
                     }
@@ -128,7 +200,7 @@ async function updateTracker() {
         });
     } catch (error) {
         console.error('Error:', error);
-        alert(`Error: ${error.message}`);
+        document.getElementById('chart-error').innerText = `Error: ${error.message}`;
     }
 }
 
