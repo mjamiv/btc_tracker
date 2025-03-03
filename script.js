@@ -62,6 +62,46 @@ function normalizeDate(date) {
   return normalized;
 }
 
+// Define time zones based on transaction dates
+const timeZones = [
+  { name: 'Feb 1, 2025 - Feb 25, 2025', start: new Date('2025-02-01'), end: new Date('2025-02-25 23:59:59') },
+  { name: 'Jan 1, 2025 - Jan 13, 2025', start: new Date('2025-01-01'), end: new Date('2025-01-13 23:59:59') },
+  { name: 'Dec 18, 2024 - Dec 31, 2024', start: new Date('2024-12-18'), end: new Date('2024-12-31 23:59:59') },
+];
+
+// Function to group purchases by time zone and calculate metrics
+function calculateTimeZoneMetrics(purchases, totalBtc, currentBtcPrice) {
+  const timeZoneMetrics = timeZones.map(zone => {
+    // Filter purchases within this time zone
+    const zonePurchases = purchases.filter(p => {
+      const purchaseDate = new Date(p.Timestamp + ' UTC');
+      return purchaseDate >= zone.start && purchaseDate <= zone.end;
+    });
+
+    // Calculate metrics for this time zone
+    const btcInZone = zonePurchases.reduce((sum, p) => sum + parseFloat(p["Quantity Transacted"] || 0), 0);
+    const costInZone = zonePurchases.reduce((sum, p) => sum + parseFloat(p["Total (inclusive of fees and/or spread)"].replace('$', '') || 0), 0);
+    const avgPurchasePrice = btcInZone > 0 ? costInZone / btcInZone : 0;
+    const percentOfBitcoin = totalBtc > 0 ? (btcInZone / totalBtc) * 100 : 0;
+    const currentValue = btcInZone * currentBtcPrice;
+    const pl = currentValue - costInZone;
+    const percentPl = costInZone > 0 ? (pl / costInZone) * 100 : 0;
+
+    return {
+      name: zone.name,
+      avgPurchasePrice: avgPurchasePrice.toFixed(2),
+      percentOfBitcoin: percentOfBitcoin.toFixed(2),
+      cost: costInZone.toFixed(2),
+      currentValue: currentValue.toFixed(2),
+      pl: pl.toFixed(2),
+      percentPl: percentPl.toFixed(2),
+      btcInZone: btcInZone.toFixed(8)
+    };
+  });
+
+  return timeZoneMetrics.filter(zone => zone.btcInZone > 0); // Only include time zones with purchases
+}
+
 async function updateTracker() {
   try {
     // Fetch transactions CSV with cache-busting
@@ -76,7 +116,7 @@ async function updateTracker() {
         // No Transaction Type to filter; assume all rows are purchases
         const purchases = result.data;
 
-        // Calculations
+        // Calculations for overall stats
         const totalBtc = purchases.reduce((sum, p) => sum + parseFloat(p["Quantity Transacted"] || 0), 0);
         const totalInvested = purchases.reduce((sum, p) => sum + parseFloat(p["Total (inclusive of fees and/or spread)"].replace('$', '') || 0), 0);
 
@@ -89,7 +129,7 @@ async function updateTracker() {
         const currentValue = totalBtc * btcPrice;
         const gain = currentValue - totalInvested;
 
-        // Update UI
+        // Update UI for overall stats
         document.getElementById('total-btc').innerText = totalBtc.toFixed(8);
         document.getElementById('invested').innerText = `$${totalInvested.toFixed(2)}`;
         document.getElementById('value').innerText = `$${currentValue.toFixed(2)}`;
@@ -107,6 +147,24 @@ async function updateTracker() {
             <td>${p["Total (inclusive of fees and/or spread)"]}</td>
           `;
           history.appendChild(row);
+        });
+
+        // Calculate and display time zone breakdown
+        const timeZoneMetrics = calculateTimeZoneMetrics(purchases, totalBtc, btcPrice);
+        const timeZoneTable = document.getElementById('timezone-breakdown');
+        timeZoneTable.innerHTML = ''; // Clear existing rows
+        timeZoneMetrics.forEach(zone => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${zone.name}</td>
+            <td>$${zone.avgPurchasePrice}</td>
+            <td>${zone.percentOfBitcoin}%</td>
+            <td>$${zone.cost}</td>
+            <td>$${zone.currentValue}</td>
+            <td>${zone.pl >= 0 ? '+' : ''}$${zone.pl}</td>
+            <td class="${zone.percentPl >= 0 ? 'gain-positive' : 'gain-negative'}">${zone.percentPl >= 0 ? '+' : ''}${zone.percentPl}%</td>
+          `;
+          timeZoneTable.appendChild(row);
         });
 
         // Render chart
