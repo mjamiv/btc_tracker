@@ -172,8 +172,11 @@ async function updateTracker() {
             };
         }).filter(p => !isNaN(p.quantity) && !isNaN(p.totalCost) && !isNaN(p.priceAtTransaction));
 
-        // Calculate metrics
+        // Calculate total BTC for scaling
         const totalBtc = purchases.reduce((sum, p) => sum + p.quantity, 0);
+        console.log(`Total BTC purchased: ${totalBtc}`);
+
+        // Calculate metrics
         const totalInvested = purchases.reduce((sum, p) => sum + p.totalCost, 0);
         const costBasis = totalBtc > 0 ? totalInvested / totalBtc : 0;
         const currentValue = totalBtc * currentPrice;
@@ -214,11 +217,14 @@ async function updateTracker() {
             const timestamp = new Date(p.timestamp + ' UTC');
             // Calculate the relative size based on BTC quantity
             const btcFraction = totalBtc > 0 ? p.quantity / totalBtc : 0;
-            // Scale the radius between 4 (min) and 12 (max) based on btcFraction
+            // Scale the radius between 4 (min) and 16 (max) based on btcFraction
             const minRadius = 4;
-            const maxRadius = 12;
+            const maxRadius = 16; // Increased max radius for more noticeable scaling
             const radius = minRadius + btcFraction * (maxRadius - minRadius);
             const hoverRadius = radius + 2; // Slightly larger on hover
+
+            // Debug the scaling calculation
+            console.log(`Purchase BTC: ${p.quantity}, Fraction: ${btcFraction}, Radius: ${radius}`);
 
             return {
                 x: timestamp,
@@ -256,7 +262,7 @@ async function updateTracker() {
                         label: 'BTC Price (USD)',
                         data: originalPriceData,
                         borderColor: '#ffffff', // White
-                        backgroundColor: 'rgba(255, 255, 255, 0.03)', // Even more transparent white fill
+                        backgroundColor: 'rgba(255, 255, 255, 0.03)', // Very transparent white fill
                         fill: true,
                         tension: 0.3,
                         pointRadius: 0,
