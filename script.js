@@ -47,7 +47,7 @@ function calculateGainData(purchases, historicalPrices) {
     // Calculate gain over time at each historical price point
     const gainData = historicalPrices.map(row => {
         const timestamp = new Date(row.Date);
-        const price = parseFloat(row.Price.replace(/[^0-9.]/g, ''));
+        const price = parseFloat((row.Price || '').replace(/[^0-9.]/g, ''));
 
         // Find the most recent cost basis before this timestamp
         const relevantPurchase = costBasisOverTime
@@ -81,17 +81,25 @@ async function updateTracker() {
         const historicalPrices = await fetchCSV('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/historical_btc_prices.csv');
         const currentPrice = await getCurrentBtcPrice();
 
+        // Log the first few rows of transactions to inspect column names
+        console.log('First few rows of transactions.csv:', transactions.slice(0, 3));
+
         // Process transactions with stricter parsing
-        const purchases = transactions.map(p => {
-            const totalCostStr = p["Total (inclusive of fees and/or spread)"].replace(/[^0-9.]/g, '');
-            const priceAtTransactionStr = p["Price at Transaction"].replace(/[^0-9.]/g, '');
+        const purchases = transactions.map((p, index) => {
+            // Log the raw row for debugging
+            console.log(`Transaction Row ${index}:`, p);
+
+            // Ensure properties exist before calling replace
+            const totalCostStr = (p["Total (inclusive of fees and/or spread)"] || '').replace(/[^0-9.]/g, '');
+            const priceAtTransactionStr = (p["Price at Transaction"] || '').replace(/[^0-9.]/g, '');
+
             return {
                 timestamp: p.Timestamp,
                 quantity: parseFloat(p["Quantity Transacted"]),
                 totalCost: parseFloat(totalCostStr),
                 priceAtTransaction: parseFloat(priceAtTransactionStr)
             };
-        });
+        }).filter(p => !isNaN(p.quantity) && !isNaN(p.totalCost) && !isNaN(p.priceAtTransaction));
 
         // Calculate metrics
         const totalBtc = purchases.reduce((sum, p) => sum + p.quantity, 0);
@@ -123,10 +131,16 @@ async function updateTracker() {
             </tr>
         `).join('');
 
+        // Log the first few rows of historical prices to inspect column names
+        console.log('First few rows of historical_btc_prices.csv:', historicalPrices.slice(0, 3));
+
         // Process historical prices
-        originalPriceData = historicalPrices.map(row => {
+        originalPriceData = historicalPrices.map((row, index) => {
+            // Log the raw row for debugging
+            console.log(`Historical Price Row ${index}:`, row);
+
             const timestamp = new Date(row.Date);
-            const price = parseFloat(row.Price.replace(/[^0-9.]/g, ''));
+            const price = parseFloat((row.Price || '').replace(/[^0-9.]/g, ''));
             return { x: timestamp, y: price };
         }).filter(point => !isNaN(point.x) && !isNaN(point.y));
 
