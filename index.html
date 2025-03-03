@@ -26,27 +26,18 @@
       color: #ffd700;
     }
     .stats {
-      display: flex;
-      justify-content: space-around;
       background-color: #2c2c2c;
       padding: 20px;
       border-radius: 10px;
       margin-bottom: 20px;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     }
-    .stat-box {
-      text-align: center;
-    }
-    .stat-box p {
-      margin: 5px 0;
+    .stats p {
+      margin: 10px 0;
       font-size: 1.2em;
     }
-    .stat-box .label {
-      color: #888;
-      font-size: 1em;
-    }
-    .gain-positive { color: #00ff00; }
-    .gain-negative { color: #ff0000; }
+    .positive { color: #00ff00; }
+    .negative { color: #ff0000; }
     .table-container {
       background-color: #2c2c2c;
       padding: 20px;
@@ -103,48 +94,21 @@
 <body>
   <div class="container">
     <h1>My BTC Tracker</h1>
-    <div class="stats">
-      <div class="stat-box">
-        <p class="label">Total BTC</p>
-        <p id="total-btc"></p>
-      </div>
-      <div class="stat-box">
-        <p class="label">Total Invested</p>
-        <p id="invested"></p>
-      </div>
-      <div class="stat-box">
-        <p class="label">Current Value</p>
-        <p id="value"></p>
-      </div>
-      <div class="stat-box">
-        <p class="label">Gain/Loss</p>
-        <p id="gain"></p>
-      </div>
+    <div class="stats" id="summary">
+      <!-- Summary metrics will be populated here -->
     </div>
     <div class="table-container">
       <h2>Transaction History</h2>
       <table>
         <thead>
-          <tr><th>Date</th><th>BTC Bought</th><th>Total Cost</th></tr>
-        </thead>
-        <tbody id="history"></tbody>
-      </table>
-    </div>
-    <div class="table-container">
-      <h2>Time Zone Breakdown</h2>
-      <table>
-        <thead>
           <tr>
-            <th>When</th>
-            <th>Average Purchase Price</th>
-            <th>% of Bitcoin</th>
-            <th>Cost</th>
-            <th>Current Value</th>
-            <th>P/L</th>
-            <th>%</th>
+            <th>Date</th>
+            <th>BTC Bought</th>
+            <th>Total Cost</th>
+            <th>Price at Transaction</th>
           </tr>
         </thead>
-        <tbody id="timezone-breakdown"></tbody>
+        <tbody id="transactions-body"></tbody>
       </table>
     </div>
     <div class="chart-container">
