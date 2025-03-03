@@ -18,9 +18,25 @@ async function fetchCSV(url) {
     });
 }
 
-// Get current BTC price (hardcoded for now to match expected value)
+// Fetch the current BTC price from CoinGecko API
 async function getCurrentBtcPrice() {
-    return 93162.00;
+    try {
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch BTC price: ${response.status} ${response.statusText}`);
+        }
+        const data = await response.json();
+        const btcPrice = data.bitcoin.usd;
+        if (typeof btcPrice !== 'number' || isNaN(btcPrice)) {
+            throw new Error('Invalid BTC price received from API');
+        }
+        console.log(`Fetched current BTC price: $${btcPrice}`);
+        return btcPrice;
+    } catch (error) {
+        console.error('Error fetching BTC price:', error);
+        // Fallback to a default value if the API fails
+        return 93162.00; // You can adjust this fallback value as needed
+    }
 }
 
 // Function to calculate cumulative cost basis and gain over time
@@ -302,7 +318,7 @@ async function updateTracker() {
                             callback: value => `$${value.toLocaleString()}`
                         },
                         suggestedMax: 100000,
-                        suggestedMin: 0
+                        suggestedMin: -500
                     }
                 },
                 plugins: {
