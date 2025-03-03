@@ -85,6 +85,8 @@ function filterDataByDateRange(startDate, endDate) {
 
     priceChart.data.datasets[0].data = filteredPriceData;
     priceChart.data.datasets[1].data = filteredPurchaseData;
+    priceChart.data.datasets[1].pointRadius = filteredPurchaseData.map(p => p.radius);
+    priceChart.data.datasets[1].pointHoverRadius = filteredPurchaseData.map(p => p.hoverRadius);
     priceChart.data.datasets[2].data = filteredGainData;
     priceChart.update();
 }
@@ -207,14 +209,24 @@ async function updateTracker() {
             return { x: timestamp, y: price };
         }).filter(point => !isNaN(point.x) && !isNaN(point.y));
 
-        // Process purchase data
+        // Process purchase data with scaled point sizes
         originalPurchaseData = purchases.map(p => {
             const timestamp = new Date(p.timestamp + ' UTC');
+            // Calculate the relative size based on BTC quantity
+            const btcFraction = totalBtc > 0 ? p.quantity / totalBtc : 0;
+            // Scale the radius between 4 (min) and 12 (max) based on btcFraction
+            const minRadius = 4;
+            const maxRadius = 12;
+            const radius = minRadius + btcFraction * (maxRadius - minRadius);
+            const hoverRadius = radius + 2; // Slightly larger on hover
+
             return {
                 x: timestamp,
                 y: p.priceAtTransaction,
                 quantity: p.quantity,
-                cost: p.totalCost
+                cost: p.totalCost,
+                radius: radius,
+                hoverRadius: hoverRadius
             };
         }).filter(point => !isNaN(point.x) && !isNaN(point.y));
 
@@ -243,8 +255,8 @@ async function updateTracker() {
                     {
                         label: 'BTC Price (USD)',
                         data: originalPriceData,
-                        borderColor: '#ffffff', // White instead of gold
-                        backgroundColor: 'rgba(255, 255, 255, 0.05)', // Semi-transparent white fill
+                        borderColor: '#ffffff', // White
+                        backgroundColor: 'rgba(255, 255, 255, 0.03)', // Even more transparent white fill
                         fill: true,
                         tension: 0.3,
                         pointRadius: 0,
@@ -255,8 +267,8 @@ async function updateTracker() {
                         data: originalPurchaseData,
                         type: 'scatter',
                         backgroundColor: '#F7931A', // Bitcoin Orange
-                        pointRadius: 6,
-                        pointHoverRadius: 8,
+                        pointRadius: originalPurchaseData.map(p => p.radius), // Dynamic radius based on BTC quantity
+                        pointHoverRadius: originalPurchaseData.map(p => p.hoverRadius), // Dynamic hover radius
                         borderColor: '#000000', // Black border
                         borderWidth: 1,
                         yAxisID: 'y'
