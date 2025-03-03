@@ -129,7 +129,7 @@ function initializeSlider(minDate, maxDate) {
             // Initial label update
             labels.innerHTML = `
                 <span>${minDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
-                <span>${maxDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+                <span>${endDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
             `;
         } else if (retries < maxRetries) {
             retries++;
@@ -176,6 +176,10 @@ async function updateTracker() {
         const totalBtc = purchases.reduce((sum, p) => sum + p.quantity, 0);
         console.log(`Total BTC purchased: ${totalBtc}`);
 
+        // Find the largest BTC quantity for scaling
+        const maxBtcQuantity = Math.max(...purchases.map(p => p.quantity));
+        console.log(`Largest BTC quantity: ${maxBtcQuantity}`);
+
         // Calculate metrics
         const totalInvested = purchases.reduce((sum, p) => sum + p.totalCost, 0);
         const costBasis = totalBtc > 0 ? totalInvested / totalBtc : 0;
@@ -215,16 +219,18 @@ async function updateTracker() {
         // Process purchase data with scaled point sizes
         originalPurchaseData = purchases.map(p => {
             const timestamp = new Date(p.timestamp + ' UTC');
-            // Calculate the relative size based on BTC quantity
-            const btcFraction = totalBtc > 0 ? p.quantity / totalBtc : 0;
-            // Scale the radius between 4 (min) and 16 (max) based on btcFraction
+            // Use logarithmic scaling based on BTC quantity relative to the largest quantity
+            const btcRatio = maxBtcQuantity > 0 ? p.quantity / maxBtcQuantity : 0;
+            // Apply logarithmic scaling to make size differences more noticeable
+            const btcFraction = btcRatio > 0 ? Math.log1p(btcRatio) / Math.log1p(1) : 0;
+            // Scale the radius between 4 (min) and 20 (max) based on btcFraction
             const minRadius = 4;
-            const maxRadius = 16; // Increased max radius for more noticeable scaling
+            const maxRadius = 20; // Increased max radius for more noticeable scaling
             const radius = minRadius + btcFraction * (maxRadius - minRadius);
             const hoverRadius = radius + 2; // Slightly larger on hover
 
             // Debug the scaling calculation
-            console.log(`Purchase BTC: ${p.quantity}, Fraction: ${btcFraction}, Radius: ${radius}`);
+            console.log(`Purchase BTC: ${p.quantity}, Ratio: ${btcRatio}, Log Fraction: ${btcFraction}, Radius: ${radius}`);
 
             return {
                 x: timestamp,
