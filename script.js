@@ -350,7 +350,7 @@ async function updateTracker() {
                         grid: { color: '#444' },
                         ticks: {
                             color: '#ffffff',
-                            callback: value => `$${value.toLocaleString()}`
+                            callback: value => `${value.toLocaleString()}`
                         }
                     },
                     y1: {
@@ -364,7 +364,7 @@ async function updateTracker() {
                         grid: { drawOnChartArea: false },
                         ticks: {
                             color: '#ffffff',
-                            callback: value => `$${value.toLocaleString()}`
+                            callback: value => `${value.toLocaleString()}`
                         },
                         suggestedMax: 100000,
                         suggestedMin: -500
