@@ -287,16 +287,6 @@ async function updateTracker() {
             data: {
                 datasets: [
                     {
-                        label: 'BTC Price (USD)',
-                        data: originalPriceData,
-                        borderColor: '#ffffff',
-                        backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                        fill: false,
-                        tension: 0.3,
-                        pointRadius: 0,
-                        yAxisID: 'y'
-                    },
-                    {
                         label: 'My Purchases',
                         data: originalPurchaseData,
                         type: 'scatter',
@@ -305,6 +295,16 @@ async function updateTracker() {
                         pointHoverRadius: originalPurchaseData.map(p => p.hoverRadius),
                         borderColor: '#000000',
                         borderWidth: 1,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'BTC Price (USD)',
+                        data: originalPriceData,
+                        borderColor: '#ffffff',
+                        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                        fill: false,
+                        tension: 0.3,
+                        pointRadius: 0,
                         yAxisID: 'y'
                     },
                     {
