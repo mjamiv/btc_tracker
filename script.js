@@ -226,8 +226,8 @@ async function updateTracker() {
             <tr>
                 <td>${p.timestamp}</td>
                 <td>${p.quantity.toFixed(8)}</td>
-                <td>${p.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
-                <td>${p.priceAtTransaction.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                <td>$${p.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                <td>$${p.priceAtTransaction.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
             </tr>
         `).join('');
 
@@ -294,7 +294,8 @@ async function updateTracker() {
                         fill: false,
                         tension: 0.3,
                         pointRadius: 0,
-                        yAxisID: 'y'
+                        yAxisID: 'y',
+                        order: 1 // Lower order, rendered first (behind)
                     },
                     {
                         label: 'My Purchases',
@@ -305,7 +306,8 @@ async function updateTracker() {
                         pointHoverRadius: originalPurchaseData.map(p => p.hoverRadius),
                         borderColor: '#000000',
                         borderWidth: 1,
-                        yAxisID: 'y'
+                        yAxisID: 'y',
+                        order: 0 // Higher order, rendered last (in front)
                     },
                     {
                         label: 'Cumulative Gain (USD)',
@@ -315,7 +317,8 @@ async function updateTracker() {
                         fill: false,
                         tension: 0.3,
                         pointRadius: 0,
-                        yAxisID: 'y1'
+                        yAxisID: 'y1',
+                        order: 2 // Rendered after BTC Price but before Purchases
                     }
                 ]
             },
