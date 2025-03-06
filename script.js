@@ -61,7 +61,7 @@ function calculateGainData(purchases, historicalPrices) {
     // Map purchases to cumulative cost basis
     const costBasisOverTime = sortedPurchases.map(p => {
         cumulativeBtc += p.quantity;
-        cumulativeCost += p.totalCost;
+        cumulativeCost += p.;
         const costBasis = cumulativeBtc > 0 ? cumulativeCost / cumulativeBtc : 0;
         return {
             timestamp: new Date(p.timestamp + ' UTC'),
@@ -226,8 +226,8 @@ async function updateTracker() {
             <tr>
                 <td>${p.timestamp}</td>
                 <td>${p.quantity.toFixed(8)}</td>
-                <td>$${p.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
-                <td>$${p.priceAtTransaction.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                <td>${p.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                <td>${p.priceAtTransaction.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
             </tr>
         `).join('');
 
@@ -381,9 +381,9 @@ async function updateTracker() {
                                     const p = originalPurchaseData[ctx.dataIndex];
                                     return `Bought ${p.quantity.toFixed(8)} BTC for $${p.cost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
                                 } else if (ctx.dataset.label === 'Cumulative Gain (USD)') {
-                                    return `Gain: $${ctx.parsed.y.toLocaleString()}`;
+                                    return `Gain: ${ctx.parsed.y.toLocaleString()}`;
                                 }
-                                return `Price: $${ctx.parsed.y.toLocaleString()}`;
+                                return `Price: ${ctx.parsed.y.toLocaleString()}`;
                             }
                         }
                     }
