@@ -382,11 +382,11 @@ async function updateTracker() {
                             label: ctx => {
                                 if (ctx.dataset.label === 'My Purchases') {
                                     const p = originalPurchaseData[ctx.dataIndex];
-                                    return `Bought ${p.quantity.toFixed(8)} BTC for $${p.cost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
+                                    return `Bought ${p.quantity.toFixed(8)} BTC for ${p.cost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
                                 } else if (ctx.dataset.label === 'Cumulative Gain (USD)') {
-                                    return `Gain: $${ctx.parsed.y.toLocaleString()}`;
+                                    return `Gain: ${ctx.parsed.y.toLocaleString()}`;
                                 }
-                                return `Price: $${ctx.parsed.y.toLocaleString()}`;
+                                return `Price: ${ctx.parsed.y.toLocaleString()}`;
                             }
                         }
                     }
