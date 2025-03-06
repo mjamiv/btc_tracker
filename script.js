@@ -226,8 +226,8 @@ async function updateTracker() {
             <tr>
                 <td>${p.timestamp}</td>
                 <td>${p.quantity.toFixed(8)}</td>
-                <td>$${p.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
-                <td>$${p.priceAtTransaction.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                <td>${p.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                <td>${p.priceAtTransaction.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
             </tr>
         `).join('');
 
