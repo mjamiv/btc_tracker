@@ -1,5 +1,3 @@
-// script.js
-
 let priceChart = null;
 let originalPriceData = [];
 let originalPurchaseData = [];
@@ -90,14 +88,18 @@ function calculateGainData(purchases, historicalPrices) {
 // Function to filter chart data based on date range
 function filterDataByDateRange(startDate, endDate) {
     const filteredPriceData = originalPriceData.filter(point => point.x >= startDate && point.x <= endDate);
-    const filteredPurchaseData = originalPurchaseData.filter(point => point.x >= startDate && point.x <= endDate);
+    const filteredCoinbaseData = originalPurchaseData.filter(point => point.x >= startDate && point.x <= endDate && point.exchange.toLowerCase() === 'coinbase');
+    const filteredGeminiData = originalPurchaseData.filter(point => point.x >= startDate && point.x <= endDate && point.exchange.toLowerCase() === 'gemini');
     const filteredGainData = originalGainData.filter(point => point.x >= startDate && point.x <= endDate);
 
     priceChart.data.datasets[0].data = filteredPriceData;
-    priceChart.data.datasets[1].data = filteredPurchaseData;
-    priceChart.data.datasets[1].pointRadius = filteredPurchaseData.map(p => p.radius);
-    priceChart.data.datasets[1].pointHoverRadius = filteredPurchaseData.map(p => p.hoverRadius);
-    priceChart.data.datasets[2].data = filteredGainData;
+    priceChart.data.datasets[1].data = filteredCoinbaseData;
+    priceChart.data.datasets[1].pointRadius = filteredCoinbaseData.map(p => p.radius);
+    priceChart.data.datasets[1].pointHoverRadius = filteredCoinbaseData.map(p => p.hoverRadius);
+    priceChart.data.datasets[2].data = filteredGeminiData;
+    priceChart.data.datasets[2].pointRadius = filteredGeminiData.map(p => p.radius);
+    priceChart.data.datasets[2].pointHoverRadius = filteredGeminiData.map(p => p.hoverRadius);
+    priceChart.data.datasets[3].data = filteredGainData;
     priceChart.update();
 }
 
@@ -166,22 +168,19 @@ async function updateTracker() {
         const btcMetrics = await getBtcMetrics();
         const currentPrice = btcMetrics.currentPrice;
 
-        // Process transactions with stricter parsing
+        // Process transactions with stricter parsing, including Exchange
         const purchases = transactions.map((p, index) => {
-            // Log the raw row for debugging
             console.log(`Transaction Row ${index}:`, p);
-
-            // Ensure properties exist before calling replace
             const totalCostStr = (p["Total (inclusive of fees and/or spread)"] || '').replace(/[^0-9.]/g, '');
             const priceAtTransactionStr = (p["Price at Transaction"] || '').replace(/[^0-9.]/g, '');
-
             return {
                 timestamp: p.Timestamp,
                 quantity: parseFloat(p["Quantity Transacted"]),
                 totalCost: parseFloat(totalCostStr),
-                priceAtTransaction: parseFloat(priceAtTransactionStr)
+                priceAtTransaction: parseFloat(priceAtTransactionStr),
+                exchange: p.Exchange // New field
             };
-        }).filter(p => !isNaN(p.quantity) && !isNaN(p.totalCost) && !isNaN(p.priceAtTransaction));
+        }).filter(p => !isNaN(p.quantity) && !isNaN(p.totalCost) && !isNaN(p.priceAtTransaction) && p.exchange);
 
         // Calculate total BTC for scaling
         const totalBtc = purchases.reduce((sum, p) => sum + p.quantity, 0);
@@ -220,7 +219,7 @@ async function updateTracker() {
             </span>
         `;
 
-        // Populate transactions table
+        // Populate transactions table with Exchange column
         const tableBody = document.getElementById('transactions-body');
         tableBody.innerHTML = purchases.map(p => `
             <tr>
@@ -228,6 +227,7 @@ async function updateTracker() {
                 <td>${p.quantity.toFixed(8)}</td>
                 <td>${p.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
                 <td>${p.priceAtTransaction.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                <td>${p.exchange}</td>
             </tr>
         `).join('');
 
@@ -238,20 +238,16 @@ async function updateTracker() {
             return { x: timestamp, y: price };
         }).filter(point => !isNaN(point.x) && !isNaN(point.y));
 
-        // Process purchase data with scaled point sizes
+        // Process purchase data with scaled point sizes and exchange distinction
         originalPurchaseData = purchases.map(p => {
             const timestamp = new Date(p.timestamp + ' UTC');
-            // Use logarithmic scaling based on BTC quantity relative to the largest quantity
             const btcRatio = maxBtcQuantity > 0 ? p.quantity / maxBtcQuantity : 0;
-            // Apply logarithmic scaling to make size differences more noticeable
             const btcFraction = btcRatio > 0 ? Math.log1p(btcRatio) / Math.log1p(1) : 0;
-            // Scale the radius between 4 (min) and 20 (max) based on btcFraction
             const minRadius = 4;
             const maxRadius = 20;
             const radius = minRadius + btcFraction * (maxRadius - minRadius);
             const hoverRadius = radius + 2;
 
-            // Debug the scaling calculation
             console.log(`Purchase BTC: ${p.quantity}, Ratio: ${btcRatio}, Log Fraction: ${btcFraction}, Radius: ${radius}`);
 
             return {
@@ -260,16 +256,22 @@ async function updateTracker() {
                 quantity: p.quantity,
                 cost: p.totalCost,
                 radius: radius,
-                hoverRadius: hoverRadius
+                hoverRadius: hoverRadius,
+                exchange: p.exchange // Add exchange to purchase data
             };
         }).filter(point => !isNaN(point.x) && !isNaN(point.y));
+
+        // Split purchases by exchange
+        const coinbasePurchases = originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbase');
+        const geminiPurchases = originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'gemini');
 
         // Calculate cumulative gain over time
         originalGainData = calculateGainData(purchases, historicalPrices);
 
         // Debug chart data
         console.log('Historical Price Data:', originalPriceData);
-        console.log('Purchase Data:', originalPurchaseData);
+        console.log('Coinbase Purchase Data:', coinbasePurchases);
+        console.log('Gemini Purchase Data:', geminiPurchases);
         console.log('Gain Data:', originalGainData);
 
         if (originalPriceData.length === 0) {
@@ -295,19 +297,31 @@ async function updateTracker() {
                         tension: 0.3,
                         pointRadius: 0,
                         yAxisID: 'y',
-                        order: 1 // Lower order, rendered first (behind)
+                        order: 1
                     },
                     {
-                        label: 'My Purchases',
-                        data: originalPurchaseData,
+                        label: 'Coinbase Purchases',
+                        data: coinbasePurchases,
                         type: 'scatter',
-                        backgroundColor: '#F7931A',
-                        pointRadius: originalPurchaseData.map(p => p.radius),
-                        pointHoverRadius: originalPurchaseData.map(p => p.hoverRadius),
+                        backgroundColor: '#1E90FF', // Blue for Coinbase
+                        pointRadius: coinbasePurchases.map(p => p.radius),
+                        pointHoverRadius: coinbasePurchases.map(p => p.hoverRadius),
                         borderColor: '#000000',
                         borderWidth: 1,
                         yAxisID: 'y',
-                        order: 0 // Higher order, rendered last (in front)
+                        order: 0
+                    },
+                    {
+                        label: 'Gemini Purchases',
+                        data: geminiPurchases,
+                        type: 'scatter',
+                        backgroundColor: '#800080', // Purple for Gemini
+                        pointRadius: geminiPurchases.map(p => p.radius),
+                        pointHoverRadius: geminiPurchases.map(p => p.hoverRadius),
+                        borderColor: '#000000',
+                        borderWidth: 1,
+                        yAxisID: 'y',
+                        order: 0
                     },
                     {
                         label: 'Cumulative Gain (USD)',
@@ -318,7 +332,7 @@ async function updateTracker() {
                         tension: 0.3,
                         pointRadius: 0,
                         yAxisID: 'y1',
-                        order: 2 // Rendered after BTC Price but before Purchases
+                        order: 2
                     }
                 ]
             },
@@ -380,9 +394,9 @@ async function updateTracker() {
                         bodyColor: '#ffffff',
                         callbacks: {
                             label: ctx => {
-                                if (ctx.dataset.label === 'My Purchases') {
-                                    const p = originalPurchaseData[ctx.dataIndex];
-                                    return `Bought ${p.quantity.toFixed(8)} BTC for ${p.cost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
+                                if (ctx.dataset.label === 'Coinbase Purchases' || ctx.dataset.label === 'Gemini Purchases') {
+                                    const p = (ctx.dataset.label === 'Coinbase Purchases' ? coinbasePurchases : geminiPurchases)[ctx.dataIndex];
+                                    return `${ctx.dataset.label}: Bought ${p.quantity.toFixed(8)} BTC for ${p.cost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
                                 } else if (ctx.dataset.label === 'Cumulative Gain (USD)') {
                                     return `Gain: ${ctx.parsed.y.toLocaleString()}`;
                                 }
