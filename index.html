@@ -206,6 +206,13 @@
         <p class="value" id="btc-price-change"></p>
       </div>
     </div>
+       <div class="chart-container">
+      <h2>Bitcoin Price and Purchases Over Time</h2>
+      <div id="chart-error" class="error"></div>
+      <canvas id="priceChart"></canvas>
+      <div id="date-range-slider" style="margin: 20px 0;"></div>
+      <div id="date-range-labels" style="display: flex; justify-content: space-between; color: #ffffff; font-size: 0.9em;"></div>
+    </div>
     <div class="table-container">
       <h2>Transaction History</h2>
       <table>
@@ -219,13 +226,6 @@
         </thead>
         <tbody id="transactions-body"></tbody>
       </table>
-    </div>
-    <div class="chart-container">
-      <h2>Bitcoin Price and Purchases Over Time</h2>
-      <div id="chart-error" class="error"></div>
-      <canvas id="priceChart"></canvas>
-      <div id="date-range-slider" style="margin: 20px 0;"></div>
-      <div id="date-range-labels" style="display: flex; justify-content: space-between; color: #ffffff; font-size: 0.9em;"></div>
     </div>
     <button onclick="updateTracker()">Refresh</button>
   </div>
