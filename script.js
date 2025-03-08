@@ -90,6 +90,7 @@ function filterDataByDateRange(startDate, endDate) {
     const filteredPriceData = originalPriceData.filter(point => point.x >= startDate && point.x <= endDate);
     const filteredCoinbaseData = originalPurchaseData.filter(point => point.x >= startDate && point.x <= endDate && point.exchange.toLowerCase() === 'coinbase');
     const filteredGeminiData = originalPurchaseData.filter(point => point.x >= startDate && point.x <= endDate && point.exchange.toLowerCase() === 'gemini');
+    const filteredVenmoData = originalPurchaseData.filter(point => point.x >= startDate && point.x <= endDate && point.exchange.toLowerCase() === 'venmo');
     const filteredGainData = originalGainData.filter(point => point.x >= startDate && point.x <= endDate);
 
     priceChart.data.datasets[0].data = filteredPriceData;
@@ -99,7 +100,10 @@ function filterDataByDateRange(startDate, endDate) {
     priceChart.data.datasets[2].data = filteredGeminiData;
     priceChart.data.datasets[2].pointRadius = filteredGeminiData.map(p => p.radius);
     priceChart.data.datasets[2].pointHoverRadius = filteredGeminiData.map(p => p.hoverRadius);
-    priceChart.data.datasets[3].data = filteredGainData;
+    priceChart.data.datasets[3].data = filteredVenmoData;
+    priceChart.data.datasets[3].pointRadius = filteredVenmoData.map(p => p.radius);
+    priceChart.data.datasets[3].pointHoverRadius = filteredVenmoData.map(p => p.hoverRadius);
+    priceChart.data.datasets[4].data = filteredGainData;
     priceChart.update();
 }
 
@@ -264,6 +268,7 @@ async function updateTracker() {
         // Split purchases by exchange
         const coinbasePurchases = originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbase');
         const geminiPurchases = originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'gemini');
+        const venmoPurchases = originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'venmo');
 
         // Calculate cumulative gain over time
         originalGainData = calculateGainData(purchases, historicalPrices);
@@ -272,6 +277,7 @@ async function updateTracker() {
         console.log('Historical Price Data:', originalPriceData);
         console.log('Coinbase Purchase Data:', coinbasePurchases);
         console.log('Gemini Purchase Data:', geminiPurchases);
+        console.log('Venmo Purchase Data:', venmoPurchases);
         console.log('Gain Data:', originalGainData);
 
         if (originalPriceData.length === 0) {
@@ -318,6 +324,18 @@ async function updateTracker() {
                         backgroundColor: '#800080', // Purple for Gemini
                         pointRadius: geminiPurchases.map(p => p.radius),
                         pointHoverRadius: geminiPurchases.map(p => p.hoverRadius),
+                        borderColor: '#000000',
+                        borderWidth: 1,
+                        yAxisID: 'y',
+                        order: 0
+                    },
+                    {
+                        label: 'Venmo Purchases',
+                        data: venmoPurchases,
+                        type: 'scatter',
+                        backgroundColor: '#00FF00', // Green for Venmo
+                        pointRadius: venmoPurchases.map(p => p.radius),
+                        pointHoverRadius: venmoPurchases.map(p => p.hoverRadius),
                         borderColor: '#000000',
                         borderWidth: 1,
                         yAxisID: 'y',
@@ -394,8 +412,10 @@ async function updateTracker() {
                         bodyColor: '#ffffff',
                         callbacks: {
                             label: ctx => {
-                                if (ctx.dataset.label === 'Coinbase Purchases' || ctx.dataset.label === 'Gemini Purchases') {
-                                    const p = (ctx.dataset.label === 'Coinbase Purchases' ? coinbasePurchases : geminiPurchases)[ctx.dataIndex];
+                                if (ctx.dataset.label === 'Coinbase Purchases' || ctx.dataset.label === 'Gemini Purchases' || ctx.dataset.label === 'Venmo Purchases') {
+                                    const purchases = ctx.dataset.label === 'Coinbase Purchases' ? coinbasePurchases : 
+                                                     ctx.dataset.label === 'Gemini Purchases' ? geminiPurchases : venmoPurchases;
+                                    const p = purchases[ctx.dataIndex];
                                     return `${ctx.dataset.label}: Bought ${p.quantity.toFixed(8)} BTC for ${p.cost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
                                 } else if (ctx.dataset.label === 'Cumulative Gain (USD)') {
                                     return `Gain: ${ctx.parsed.y.toLocaleString()}`;
