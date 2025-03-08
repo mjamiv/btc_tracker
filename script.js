@@ -20,15 +20,10 @@ async function fetchCSV(url) {
 async function getBtcMetrics() {
     try {
         const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin');
-        if (!response.ok) {
-            throw new Error(`Failed to fetch BTC metrics: ${response.status} ${response.statusText}`);
-        }
+        if (!response.ok) throw new Error(`Failed to fetch BTC metrics: ${response.status}`);
         const data = await response.json();
-        if (!data || data.length === 0) {
-            throw new Error('Invalid BTC metrics received from API');
-        }
+        if (!data || data.length === 0) throw new Error('Invalid BTC metrics received');
         const btcData = data[0];
-        console.log('Fetched BTC metrics:', btcData);
         return {
             currentPrice: btcData.current_price,
             marketCap: btcData.market_cap,
@@ -37,47 +32,58 @@ async function getBtcMetrics() {
         };
     } catch (error) {
         console.error('Error fetching BTC metrics:', error);
-        // Fallback values if the API fails
+        return { currentPrice: 93162.00, marketCap: 0, volume24h: 0, priceChange24h: 0 };
+    }
+}
+
+// Fetch Bitcoin blockchain metrics from Blockchain.com API
+async function getBlockchainMetrics() {
+    try {
+        const [heightRes, difficultyRes, rewardRes] = await Promise.all([
+            fetch('https://blockchain.info/q/getblockcount'),
+            fetch('https://blockchain.info/q/getdifficulty'),
+            fetch('https://blockchain.info/q/bcperblock')
+        ]);
+
+        if (!heightRes.ok || !difficultyRes.ok || !rewardRes.ok) {
+            throw new Error('Failed to fetch blockchain metrics');
+        }
+
+        const blockHeight = await heightRes.text();
+        const difficulty = await difficultyRes.text();
+        const rewardSatoshi = await rewardRes.text(); // Reward in satoshis
+
         return {
-            currentPrice: 93162.00,
-            marketCap: 0,
-            volume24h: 0,
-            priceChange24h: 0
+            blockHeight: parseInt(blockHeight),
+            difficulty: parseFloat(difficulty),
+            blockReward: parseInt(rewardSatoshi) / 100000000 // Convert satoshis to BTC
+        };
+    } catch (error) {
+        console.error('Error fetching blockchain metrics:', error);
+        return {
+            blockHeight: 885419, // Fallback value (example)
+            difficulty: 110.57e12, // Fallback in terahashes (example)
+            blockReward: 3.125 // Current reward as of March 2025
         };
     }
 }
 
 // Function to calculate cumulative cost basis and gain over time
 function calculateGainData(purchases, historicalPrices) {
-    // Sort purchases by timestamp
     const sortedPurchases = [...purchases].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-    // Initialize cumulative variables
     let cumulativeBtc = 0;
     let cumulativeCost = 0;
-    
-    // Map purchases to cumulative cost basis
     const costBasisOverTime = sortedPurchases.map(p => {
         cumulativeBtc += p.quantity;
         cumulativeCost += p.totalCost;
         const costBasis = cumulativeBtc > 0 ? cumulativeCost / cumulativeBtc : 0;
-        return {
-            timestamp: new Date(p.timestamp + ' UTC'),
-            costBasis: costBasis,
-            totalBtc: cumulativeBtc
-        };
+        return { timestamp: new Date(p.timestamp + ' UTC'), costBasis, totalBtc: cumulativeBtc };
     });
 
-    // Calculate gain over time at each historical price point
     const gainData = historicalPrices.map(row => {
         const timestamp = new Date(row.Date);
         const price = parseFloat((row.Price || '').replace(/[^0-9.]/g, ''));
-
-        // Find the most recent cost basis before this timestamp
-        const relevantPurchase = costBasisOverTime
-            .filter(p => p.timestamp <= timestamp)
-            .slice(-1)[0] || { costBasis: 0, totalBtc: 0 };
-
+        const relevantPurchase = costBasisOverTime.filter(p => p.timestamp <= timestamp).slice(-1)[0] || { costBasis: 0, totalBtc: 0 };
         const gain = relevantPurchase.totalBtc > 0 ? (price - relevantPurchase.costBasis) * relevantPurchase.totalBtc : 0;
         return { x: timestamp, y: gain };
     }).filter(point => !isNaN(point.x) && !isNaN(point.y));
@@ -119,30 +125,21 @@ function initializeSlider(minDate, maxDate) {
             noUiSlider.create(slider, {
                 start: [minDate.getTime(), maxDate.getTime()],
                 connect: true,
-                range: {
-                    'min': minDate.getTime(),
-                    'max': maxDate.getTime()
-                },
-                step: 24 * 60 * 60 * 1000, // Step by day
+                range: { 'min': minDate.getTime(), 'max': maxDate.getTime() },
+                step: 24 * 60 * 60 * 1000,
                 behaviour: 'drag'
             });
 
-            // Update labels and chart on slider change
             slider.noUiSlider.on('update', (values) => {
                 const startDate = new Date(parseInt(values[0]));
                 const endDate = new Date(parseInt(values[1]));
-                
-                // Update labels
                 labels.innerHTML = `
                     <span>${startDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
                     <span>${endDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
                 `;
-
-                // Filter chart data
                 filterDataByDateRange(startDate, endDate);
             });
 
-            // Initial label update
             labels.innerHTML = `
                 <span>${minDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
                 <span>${maxDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
@@ -150,11 +147,10 @@ function initializeSlider(minDate, maxDate) {
         } else if (retries < maxRetries) {
             retries++;
             console.log(`Retrying slider initialization (${retries}/${maxRetries})...`);
-            setTimeout(tryInitializeSlider, 500); // Retry after 500ms
+            setTimeout(tryInitializeSlider, 500);
         } else {
             console.error('Failed to load noUiSlider after maximum retries.');
-            document.getElementById('chart-error').innerText = 'Error: Date range slider not available - failed to load noUiSlider library.';
-            // Hide the slider container
+            document.getElementById('chart-error').innerText = 'Error: Date range slider not available.';
             slider.style.display = 'none';
             labels.style.display = 'none';
         }
@@ -166,13 +162,12 @@ function initializeSlider(minDate, maxDate) {
 // Update the tracker
 async function updateTracker() {
     try {
-        // Load data
         const transactions = await fetchCSV('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/transactions.csv');
         const historicalPrices = await fetchCSV('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/historical_btc_prices.csv');
         const btcMetrics = await getBtcMetrics();
+        const blockchainMetrics = await getBlockchainMetrics();
         const currentPrice = btcMetrics.currentPrice;
 
-        // Process transactions with stricter parsing, including Exchange
         const purchases = transactions.map((p, index) => {
             console.log(`Transaction Row ${index}:`, p);
             const totalCostStr = (p["Total (inclusive of fees and/or spread)"] || '').replace(/[^0-9.]/g, '');
@@ -182,26 +177,18 @@ async function updateTracker() {
                 quantity: parseFloat(p["Quantity Transacted"]),
                 totalCost: parseFloat(totalCostStr),
                 priceAtTransaction: parseFloat(priceAtTransactionStr),
-                exchange: p.Exchange // New field
+                exchange: p.Exchange
             };
         }).filter(p => !isNaN(p.quantity) && !isNaN(p.totalCost) && !isNaN(p.priceAtTransaction) && p.exchange);
 
-        // Calculate total BTC for scaling
         const totalBtc = purchases.reduce((sum, p) => sum + p.quantity, 0);
-        console.log(`Total BTC purchased: ${totalBtc}`);
-
-        // Find the largest BTC quantity for scaling
         const maxBtcQuantity = Math.max(...purchases.map(p => p.quantity));
-        console.log(`Largest BTC quantity: ${maxBtcQuantity}`);
-
-        // Calculate metrics
         const totalInvested = purchases.reduce((sum, p) => sum + p.totalCost, 0);
         const costBasis = totalBtc > 0 ? totalInvested / totalBtc : 0;
         const currentValue = totalBtc * currentPrice;
         const gainLoss = currentValue - totalInvested;
         const gainLossPercent = totalInvested > 0 ? (gainLoss / totalInvested) * 100 : 0;
 
-        // Update summary stats with formatted currencies
         document.getElementById('total-btc').innerText = totalBtc.toFixed(8);
         document.getElementById('invested').innerText = totalInvested.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
         document.getElementById('cost-basis').innerText = costBasis.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -213,7 +200,6 @@ async function updateTracker() {
             </span>
         `;
 
-        // Update BTC metrics
         document.getElementById('btc-price').innerText = currentPrice.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
         document.getElementById('btc-market-cap').innerText = btcMetrics.marketCap.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
         document.getElementById('btc-volume').innerText = btcMetrics.volume24h.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -223,7 +209,11 @@ async function updateTracker() {
             </span>
         `;
 
-        // Populate transactions table with Exchange column
+        // Update new blockchain metrics
+        document.getElementById('btc-block-height').innerText = blockchainMetrics.blockHeight.toLocaleString();
+        document.getElementById('btc-difficulty').innerText = (blockchainMetrics.difficulty / 1e12).toFixed(2) + ' T'; // Convert to terahashes
+        document.getElementById('btc-block-reward').innerText = blockchainMetrics.blockReward.toFixed(3) + ' BTC';
+
         const tableBody = document.getElementById('transactions-body');
         tableBody.innerHTML = purchases.map(p => `
             <tr>
@@ -235,14 +225,12 @@ async function updateTracker() {
             </tr>
         `).join('');
 
-        // Process historical prices
         originalPriceData = historicalPrices.map(row => {
             const timestamp = new Date(row.Date);
             const price = parseFloat((row.Price || '').replace(/[^0-9.]/g, ''));
             return { x: timestamp, y: price };
         }).filter(point => !isNaN(point.x) && !isNaN(point.y));
 
-        // Process purchase data with scaled point sizes and exchange distinction
         originalPurchaseData = purchases.map(p => {
             const timestamp = new Date(p.timestamp + ' UTC');
             const btcRatio = maxBtcQuantity > 0 ? p.quantity / maxBtcQuantity : 0;
@@ -252,8 +240,6 @@ async function updateTracker() {
             const radius = minRadius + btcFraction * (maxRadius - minRadius);
             const hoverRadius = radius + 2;
 
-            console.log(`Purchase BTC: ${p.quantity}, Ratio: ${btcRatio}, Log Fraction: ${btcFraction}, Radius: ${radius}`);
-
             return {
                 x: timestamp,
                 y: p.priceAtTransaction,
@@ -261,33 +247,26 @@ async function updateTracker() {
                 cost: p.totalCost,
                 radius: radius,
                 hoverRadius: hoverRadius,
-                exchange: p.exchange // Add exchange to purchase data
+                exchange: p.exchange
             };
         }).filter(point => !isNaN(point.x) && !isNaN(point.y));
 
-        // Split purchases by exchange
         const coinbasePurchases = originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbase');
         const geminiPurchases = originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'gemini');
         const venmoPurchases = originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'venmo');
 
-        // Calculate cumulative gain over time
         originalGainData = calculateGainData(purchases, historicalPrices);
 
-        // Debug chart data
         console.log('Historical Price Data:', originalPriceData);
         console.log('Coinbase Purchase Data:', coinbasePurchases);
         console.log('Gemini Purchase Data:', geminiPurchases);
         console.log('Venmo Purchase Data:', venmoPurchases);
         console.log('Gain Data:', originalGainData);
 
-        if (originalPriceData.length === 0) {
-            document.getElementById('chart-error').innerText = 'Error: No valid historical price data available to plot.';
-        }
-        if (originalPurchaseData.length === 0) {
-            document.getElementById('chart-error').innerText = 'Error: No valid purchase data available to plot.';
+        if (originalPriceData.length === 0 || originalPurchaseData.length === 0) {
+            document.getElementById('chart-error').innerText = 'Error: No valid data available to plot.';
         }
 
-        // Render chart
         const ctx = document.getElementById('priceChart').getContext('2d');
         if (priceChart) priceChart.destroy();
         priceChart = new Chart(ctx, {
@@ -309,7 +288,7 @@ async function updateTracker() {
                         label: 'Coinbase Purchases',
                         data: coinbasePurchases,
                         type: 'scatter',
-                        backgroundColor: '#1E90FF', // Blue for Coinbase
+                        backgroundColor: '#1E90FF',
                         pointRadius: coinbasePurchases.map(p => p.radius),
                         pointHoverRadius: coinbasePurchases.map(p => p.hoverRadius),
                         borderColor: '#000000',
@@ -321,7 +300,7 @@ async function updateTracker() {
                         label: 'Gemini Purchases',
                         data: geminiPurchases,
                         type: 'scatter',
-                        backgroundColor: '#800080', // Purple for Gemini
+                        backgroundColor: '#800080',
                         pointRadius: geminiPurchases.map(p => p.radius),
                         pointHoverRadius: geminiPurchases.map(p => p.hoverRadius),
                         borderColor: '#000000',
@@ -333,7 +312,7 @@ async function updateTracker() {
                         label: 'Venmo Purchases',
                         data: venmoPurchases,
                         type: 'scatter',
-                        backgroundColor: '#00FF00', // Green for Venmo
+                        backgroundColor: '#00FF00',
                         pointRadius: venmoPurchases.map(p => p.radius),
                         pointHoverRadius: venmoPurchases.map(p => p.hoverRadius),
                         borderColor: '#000000',
@@ -359,53 +338,27 @@ async function updateTracker() {
                 scales: {
                     x: {
                         type: 'time',
-                        time: {
-                            unit: 'month',
-                            displayFormats: { month: 'MMM yyyy' }
-                        },
-                        title: {
-                            display: true,
-                            text: 'Date',
-                            color: '#ffffff',
-                            font: { size: 14 }
-                        },
+                        time: { unit: 'month', displayFormats: { month: 'MMM yyyy' } },
+                        title: { display: true, text: 'Date', color: '#ffffff', font: { size: 14 } },
                         grid: { color: '#444' },
                         ticks: { color: '#ffffff' }
                     },
                     y: {
-                        title: {
-                            display: true,
-                            text: 'Price (USD)',
-                            color: '#ffffff',
-                            font: { size: 14 }
-                        },
+                        title: { display: true, text: 'Price (USD)', color: '#ffffff', font: { size: 14 } },
                         grid: { color: '#444' },
-                        ticks: {
-                            color: '#ffffff',
-                            callback: value => `${value.toLocaleString()}`
-                        }
+                        ticks: { color: '#ffffff', callback: value => `${value.toLocaleString()}` }
                     },
                     y1: {
                         position: 'right',
-                        title: {
-                            display: true,
-                            text: 'Cumulative Gain (USD)',
-                            color: '#ffffff',
-                            font: { size: 14 }
-                        },
+                        title: { display: true, text: 'Cumulative Gain (USD)', color: '#ffffff', font: { size: 14 } },
                         grid: { drawOnChartArea: false },
-                        ticks: {
-                            color: '#ffffff',
-                            callback: value => `${value.toLocaleString()}`
-                        },
+                        ticks: { color: '#ffffff', callback: value => `${value.toLocaleString()}` },
                         suggestedMax: 75000,
                         suggestedMin: -500
                     }
                 },
                 plugins: {
-                    legend: {
-                        labels: { color: '#ffffff', font: { size: 12 } }
-                    },
+                    legend: { labels: { color: '#ffffff', font: { size: 12 } } },
                     tooltip: {
                         backgroundColor: 'rgba(0, 0, 0, 0.8)',
                         titleColor: '#ffffff',
@@ -413,7 +366,7 @@ async function updateTracker() {
                         callbacks: {
                             label: ctx => {
                                 if (ctx.dataset.label === 'Coinbase Purchases' || ctx.dataset.label === 'Gemini Purchases' || ctx.dataset.label === 'Venmo Purchases') {
-                                    const purchases = ctx.dataset.label === 'Coinbase Purchases' ? coinbasePurchases : 
+                                    const purchases = ctx.dataset.label === 'Coinbase Purchases' ? coinbasePurchases :
                                                      ctx.dataset.label === 'Gemini Purchases' ? geminiPurchases : venmoPurchases;
                                     const p = purchases[ctx.dataIndex];
                                     return `${ctx.dataset.label}: Bought ${p.quantity.toFixed(8)} BTC for ${p.cost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
@@ -428,7 +381,6 @@ async function updateTracker() {
             }
         });
 
-        // Initialize date range slider with retry logic
         const minDate = new Date(Math.min(...originalPriceData.map(d => d.x)));
         const maxDate = new Date(Math.max(...originalPriceData.map(d => d.x)));
         initializeSlider(minDate, maxDate);
