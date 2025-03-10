@@ -212,7 +212,7 @@ async function updateTracker() {
         // Update new blockchain metrics
         document.getElementById('btc-block-height').innerText = blockchainMetrics.blockHeight.toLocaleString();
         document.getElementById('btc-difficulty').innerText = (blockchainMetrics.difficulty / 1e12).toFixed(2) + ' T'; // Convert to terahashes
-        document.getElementById('btc-block-reward').innerText = blockchainMetrics.blockReward.toFixed(10) + ' BTC';
+        document.getElementById('btc-hash-rate').innerText = blockchainMetrics.hashRate.toFixed(2) + ' EH/s';
 
         const tableBody = document.getElementById('transactions-body');
         tableBody.innerHTML = purchases.map(p => `
