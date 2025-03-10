@@ -39,31 +39,35 @@ async function getBtcMetrics() {
 // Fetch Bitcoin blockchain metrics from Blockchain.com API
 async function getBlockchainMetrics() {
     try {
-        const [heightRes, difficultyRes, rewardRes] = await Promise.all([
+        const [heightRes, difficultyRes, rewardRes, statsRes] = await Promise.all([
             fetch('https://blockchain.info/q/getblockcount'),
             fetch('https://blockchain.info/q/getdifficulty'),
-            fetch('https://blockchain.info/q/bcperblock')
+            fetch('https://blockchain.info/q/bcperblock'),
+            fetch('https://blockchain.info/stats?format=json') // Added stats endpoint for hash rate
         ]);
 
-        if (!heightRes.ok || !difficultyRes.ok || !rewardRes.ok) {
+        if (!heightRes.ok || !difficultyRes.ok || !rewardRes.ok || !statsRes.ok) {
             throw new Error('Failed to fetch blockchain metrics');
         }
 
         const blockHeight = await heightRes.text();
         const difficulty = await difficultyRes.text();
         const rewardSatoshi = await rewardRes.text(); // Reward in satoshis
+        const stats = await statsRes.json(); // JSON response with hash_rate
 
         return {
             blockHeight: parseInt(blockHeight),
             difficulty: parseFloat(difficulty),
-            blockReward: parseInt(rewardSatoshi) / 100000000 // Convert satoshis to BTC
+            blockReward: parseInt(rewardSatoshi) / 100000000, // Convert satoshis to BTC
+            hashRate: stats.hash_rate / 1e18 // Convert from H/s to EH/s
         };
     } catch (error) {
         console.error('Error fetching blockchain metrics:', error);
         return {
             blockHeight: 885419, // Fallback value (example)
             difficulty: 110.57e12, // Fallback in terahashes (example)
-            blockReward: 3.125 // Current reward as of March 2025
+            blockReward: 3.125, // Current reward as of March 2025
+            hashRate: 200 // Fallback hash rate in EH/s (example)
         };
     }
 }
@@ -209,7 +213,7 @@ async function updateTracker() {
             </span>
         `;
 
-        // Update new blockchain metrics
+        // Update blockchain metrics
         document.getElementById('btc-block-height').innerText = blockchainMetrics.blockHeight.toLocaleString();
         document.getElementById('btc-difficulty').innerText = (blockchainMetrics.difficulty / 1e12).toFixed(2) + ' T'; // Convert to terahashes
         document.getElementById('btc-hash-rate').innerText = blockchainMetrics.hashRate.toFixed(2) + ' EH/s';
