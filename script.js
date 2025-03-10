@@ -58,8 +58,8 @@ async function getBlockchainMetrics() {
         return {
             blockHeight: parseInt(blockHeight),
             difficulty: parseFloat(difficulty),
-            blockReward: parseInt(rewardSatoshi),
-            hashRate: stats.hash_rate / 1e10
+            blockReward: parseFloat(rewardSatoshi),
+            hashRate: stats.hash_rate / 1e8
         };
     } catch (error) {
         console.error('Error fetching blockchain metrics:', error);
