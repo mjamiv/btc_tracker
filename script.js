@@ -59,14 +59,14 @@ async function getBlockchainMetrics() {
             blockHeight: parseInt(blockHeight),
             difficulty: parseFloat(difficulty),
             blockReward: parseFloat(rewardSatoshi),
-            hashRate: stats.hash_rate / 1e8
+            hashRate: stats.hash_rate / 1e9
         };
     } catch (error) {
         console.error('Error fetching blockchain metrics:', error);
         return {
-            blockHeight: 885419, // Fallback value (example)
+            blockHeight: 514714, // Fallback value (example)
             difficulty: 110.57e12, // Fallback in terahashes (example)
-            blockReward: 3.125, // Current reward as of March 2025
+            blockReward: 3.521, // Current reward as of March 2025
             hashRate: 200 // Fallback hash rate in EH/s (example)
         };
     }
