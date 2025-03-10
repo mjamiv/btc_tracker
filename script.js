@@ -58,8 +58,8 @@ async function getBlockchainMetrics() {
         return {
             blockHeight: parseInt(blockHeight),
             difficulty: parseFloat(difficulty),
-            blockReward: parseInt(rewardSatoshi) / 100000000, // Convert satoshis to BTC
-            hashRate: stats.hash_rate / 1e18 // Convert from H/s to EH/s
+            blockReward: parseInt(rewardSatoshi),
+            hashRate: stats.hash_rate
         };
     } catch (error) {
         console.error('Error fetching blockchain metrics:', error);
@@ -216,7 +216,7 @@ async function updateTracker() {
         // Update blockchain metrics
         document.getElementById('btc-block-height').innerText = blockchainMetrics.blockHeight.toLocaleString();
         document.getElementById('btc-difficulty').innerText = (blockchainMetrics.difficulty / 1e12).toFixed(2) + ' T'; // Convert to terahashes
-        document.getElementById('btc-hash-rate').innerText = blockchainMetrics.hashRate.toFixed(2) + ' EH/s';
+        document.getElementById('btc-hash-rate').innerText = blockchainMetrics.hashRate.toFixed(8) + ' EH/s';
 
         const tableBody = document.getElementById('transactions-body');
         tableBody.innerHTML = purchases.map(p => `
