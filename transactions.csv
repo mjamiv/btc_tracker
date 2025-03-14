@@ -1,4 +1,4 @@
-Timestamp,Quantity Transacted,Price Currency,Price at Transaction,Subtotal,Total (inclusive of fees and/or spread),Fees and/or Spread,Exchange
+Timestamp,Quantity Transacted,Price Currency,Price at Transaction,Subtotal,Total,Fees,Exchange
 2025-03-13 18:11:16 UTC,0.02465829,USD,"$80,504.55 ",$1,985.10 ,$1,999.99 ,$14.89 ,Coinbase
 2025-03-13 14:03:37 UTC,0.03052652,USD,"$81,878.93 ",$2,499.48 ,$2,518.22 ,$18.75 ,Coinbase
 2025-03-09 12:59:00 UTC,0.01113511,USD,"$82,679.11 ",$920.64 ,$931.69 ,$11.05 ,Coinbase
