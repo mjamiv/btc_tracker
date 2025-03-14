@@ -174,7 +174,7 @@ async function updateTracker() {
 
         const purchases = transactions.map((p, index) => {
             console.log(`Transaction Row ${index}:`, p);
-            const totalCostStr = (p["Total (inclusive of fees and/or spread)"] || '').replace(/[^0-9.]/g, '');
+            const totalCostStr = (p["Total"] || '').replace(/[^0-9.]/g, '');
             const priceAtTransactionStr = (p["Price at Transaction"] || '').replace(/[^0-9.]/g, '');
             return {
                 timestamp: p.Timestamp,
