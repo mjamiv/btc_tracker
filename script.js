@@ -237,14 +237,19 @@ async function updateTracker() {
         }).filter(point => !isNaN(point.x) && !isNaN(point.y));
 
         originalPurchaseData = purchases.map(p => {
-            const timestamp = new Date(p.timestamp + ' UTC');
+            // Replace spaces with 'T' and ensure UTC by appending 'Z' if not present
+            const normalizedTimestamp = p.timestamp.replace(' ', 'T').includes('Z') ? p.timestamp : p.timestamp.replace(' ', 'T') + 'Z';
+            const timestamp = new Date(normalizedTimestamp);
+            if (isNaN(timestamp.getTime())) {
+                console.error(`Invalid timestamp: ${p.timestamp}`);
+            }
             const btcRatio = maxBtcQuantity > 0 ? p.quantity / maxBtcQuantity : 0;
             const btcFraction = btcRatio > 0 ? Math.log1p(btcRatio) / Math.log1p(1) : 0;
             const minRadius = 4;
             const maxRadius = 20;
             const radius = minRadius + btcFraction * (maxRadius - minRadius);
             const hoverRadius = radius + 2;
-
+        
             return {
                 x: timestamp,
                 y: p.priceAtTransaction,
@@ -255,7 +260,7 @@ async function updateTracker() {
                 exchange: p.exchange
             };
         }).filter(point => !isNaN(point.x) && !isNaN(point.y));
-
+        
         const coinbasePurchases = originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbase');
         const geminiPurchases = originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'gemini');
         const venmoPurchases = originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'venmo');
