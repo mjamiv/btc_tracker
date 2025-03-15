@@ -237,7 +237,7 @@ async function updateTracker() {
         }).filter(point => !isNaN(point.x) && !isNaN(point.y));
 
         originalPurchaseData = purchases.map(p => {
-            const timestamp = new Date(p.timestamp + ' UTC');
+            const timestamp = new Date(p.timestamp);
             const btcRatio = maxBtcQuantity > 0 ? p.quantity / maxBtcQuantity : 0;
             const btcFraction = btcRatio > 0 ? Math.log1p(btcRatio) / Math.log1p(1) : 0;
             const minRadius = 4;
