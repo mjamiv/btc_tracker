@@ -387,8 +387,7 @@ async function updateTracker() {
         });
 
         const minDate = new Date(Math.min(...originalPriceData.map(d => d.x)));
-        const today = new Date(); // Get today's date
-        const maxDate = new Date(today.setDate(today.getDate() + 30)); // Add 30 days to today
+        const maxDate = new Date();
         initializeSlider(minDate, maxDate);
         
     } catch (error) {
