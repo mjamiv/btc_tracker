@@ -237,9 +237,7 @@ async function updateTracker() {
         }).filter(point => !isNaN(point.x) && !isNaN(point.y));
 
         originalPurchaseData = purchases.map(p => {
-            // Replace spaces with 'T' and ensure UTC by appending 'Z' if not present
-            const normalizedTimestamp = p.timestamp.replace(' ', 'T').includes('Z') ? p.timestamp : p.timestamp.replace(' ', 'T') + 'Z';
-            const timestamp = new Date(normalizedTimestamp);
+            const timestamp = dateFns.parse(p.timestamp, 'yyyy-MM-dd HH:mm:ss', new Date()); // Adjust format based on your CSV
             if (isNaN(timestamp.getTime())) {
                 console.error(`Invalid timestamp: ${p.timestamp}`);
             }
