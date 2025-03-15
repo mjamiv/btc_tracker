@@ -387,7 +387,7 @@ async function updateTracker() {
         });
 
         const minDate = new Date(Math.min(...originalPriceData.map(d => d.x)));
-        const maxDate = new Date();
+        const maxDate = new Date(new Date().setDate(new Date().getDate() + 60));
         initializeSlider(minDate, maxDate);
         
     } catch (error) {
