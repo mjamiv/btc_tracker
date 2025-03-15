@@ -237,10 +237,7 @@ async function updateTracker() {
         }).filter(point => !isNaN(point.x) && !isNaN(point.y));
 
         originalPurchaseData = purchases.map(p => {
-            const timestamp = dateFns.parse(p.timestamp, 'yyyy-MM-dd HH:mm:ss', new Date()); // Adjust format based on your CSV
-            if (isNaN(timestamp.getTime())) {
-                console.error(`Invalid timestamp: ${p.timestamp}`);
-            }
+            const timestamp = new Date(p.timestamp + ' UTC');
             const btcRatio = maxBtcQuantity > 0 ? p.quantity / maxBtcQuantity : 0;
             const btcFraction = btcRatio > 0 ? Math.log1p(btcRatio) / Math.log1p(1) : 0;
             const minRadius = 4;
