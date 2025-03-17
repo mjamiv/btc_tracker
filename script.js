@@ -211,11 +211,7 @@ async function updateTracker() {
         const btcMetrics = await getBtcMetrics();
         const blockchainMetrics = await getBlockchainMetrics();
         const currentPrice = btcMetrics.currentPrice;
-
         // ... (rest of the function remains unchanged)
-        const btcMetrics = await getBtcMetrics();
-        const blockchainMetrics = await getBlockchainMetrics();
-        const currentPrice = btcMetrics.currentPrice;
 
         const purchases = transactions.map((p, index) => {
             console.log(`Transaction Row ${index}:`, p);
