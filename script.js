@@ -168,50 +168,9 @@ async function updateTracker() {
         const transactions = await fetchCSV('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/transactions.csv');
         const historicalPrices = await fetchCSV('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/historical_btc_prices.csv');
         
-        // Update historical prices with missing dates
-        const lastDateStr = historicalPrices.reduce((max, row) => row.Date > max ? row.Date : max, historicalPrices[0].Date);
-        const lastDate = new Date(lastDateStr + 'T00:00:00Z');
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setUTCDate(today.getUTCDate() - 1);
-        yesterday.setUTCHours(0, 0, 0, 0);
-        const missingDates = [];
-        let currentDate = new Date(lastDate);
-        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
-        while (currentDate <= yesterday) {
-            missingDates.push(new Date(currentDate));
-            currentDate.setUTCDate(currentDate.getUTCDate() + 1);
-        }
-        if (missingDates.length > 0) {
-            try {
-                const fromTimestamp = Math.floor(missingDates[0].getTime() / 1000);
-                const toTimestamp = Math.floor(Date.now() / 1000);
-                const url = `https://api.coingecko.com/api/v3/coins/bitcoin/market_chart/range?vs_currency=usd&from=${fromTimestamp}&to=${toTimestamp}`;
-                const response = await fetch(url);
-                if (!response.ok) throw new Error('Failed to fetch historical prices from CoinGecko');
-                const data = await response.json();
-                const prices = data.prices;
-                missingDates.forEach(date => {
-                    const targetDate = new Date(date);
-                    targetDate.setUTCHours(23, 59, 0, 0);
-                    const targetTimestamp = targetDate.getTime();
-                    const closestPrice = prices.reduce((prev, curr) => {
-                        return (Math.abs(curr[0] - targetTimestamp) < Math.abs(prev[0] - targetTimestamp) ? curr : prev);
-                    });
-                    const closingPrice = closestPrice[1];
-                    const dateStr = date.toISOString().split('T')[0];
-                    historicalPrices.push({ Date: dateStr, Price: closingPrice.toFixed(2) });
-                });
-            } catch (error) {
-                console.error('Error fetching historical prices:', error);
-            }
-        }
-        historicalPrices.sort((a, b) => new Date(a.Date) - new Date(b.Date));
-
         const btcMetrics = await getBtcMetrics();
         const blockchainMetrics = await getBlockchainMetrics();
         const currentPrice = btcMetrics.currentPrice;
-        // ... (rest of the function remains unchanged)
 
         const purchases = transactions.map((p, index) => {
             console.log(`Transaction Row ${index}:`, p);
