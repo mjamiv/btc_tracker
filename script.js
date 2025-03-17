@@ -162,13 +162,7 @@ function initializeSlider(minDate, maxDate) {
 
     tryInitializeSlider();
 }
-
-// Update the tracker
-async function updateTracker() {
-    try {
-        const transactions = await fetchCSV('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/transactions.csv');
-        const historicalPrices = await fetchCSV('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/historical_btc_prices.csv');
-        
+      
 async function updateTracker() {
     try {
         const transactions = await fetchCSV('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/transactions.csv');
