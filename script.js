@@ -357,9 +357,7 @@ async function updateTracker() {
                         position: 'right',
                         title: { display: true, text: 'Cumulative Gain (USD)', color: '#ffffff', font: { size: 14 } },
                         grid: { drawOnChartArea: false },
-                        ticks: { color: '#ffffff', callback: value => `${value.toLocaleString()}` },
-                        suggestedMax: 75000,
-                        suggestedMin: -500
+                        ticks: { color: '#ffffff', callback: value => `${value.toLocaleString()}` }
                     }
                 },
                 plugins: {
