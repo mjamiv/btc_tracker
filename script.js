@@ -393,6 +393,6 @@ async function updateTracker() {
         document.getElementById('chart-error').innerText = `Error: ${error.message}`;
     }
 }
-
+ 
 // Run on load
 updateTracker();
