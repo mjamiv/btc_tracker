@@ -270,6 +270,10 @@ async function updateTracker() {
 
         if (originalPriceData.length === 0 || originalPurchaseData.length === 0) {
             document.getElementById('chart-error').innerText = 'Error: No valid data available to plot.';
+
+        // --- calculate a padded max for the y1 axis -------------------------------
+        const maxGain = Math.max(...originalGainData.map(d => d.y));   // highest $ gain so far
+        const y1Max   = maxGain * 1.15;                                // +15 % breathing room
         }
 
         const ctx = document.getElementById('priceChart').getContext('2d');
@@ -356,8 +360,10 @@ async function updateTracker() {
                     y1: {
                         position: 'right',
                         title: { display: true, text: 'Cumulative Gain (USD)', color: '#ffffff', font: { size: 14 } },
-                        grid: { drawOnChartArea: false },
-                        ticks: { color: '#ffffff', callback: value => `${value.toLocaleString()}` }
+                        grid:  { drawOnChartArea: false },
+                        ticks: { color: '#ffffff', callback: v => `${v.toLocaleString()}` },
+                        suggestedMax: y1Max        // ⬅️  the new head-room
+                        //   ↳ swap for `max: y1Max` if you need an exact ceiling
                     }
                 },
                 plugins: {
