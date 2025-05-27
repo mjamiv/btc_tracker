@@ -275,7 +275,7 @@ async function updateTracker() {
 
         // --- calculate a padded max for the y1 axis -------------------------------
         const maxGain = Math.max(...originalGainData.map(d => d.y));   // highest $ gain so far
-        const y1Max   = maxGain * 1.15;                                // +15 % breathing room
+        const y1Max   = maxGain * 1.25;                                // +25 % breathing room
        
         const ctx = document.getElementById('priceChart').getContext('2d');
         if (priceChart) priceChart.destroy();
