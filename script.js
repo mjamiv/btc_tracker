@@ -1,334 +1,317 @@
 /* ------------------------------------------------------------------
-   BTC Tracker – full script with Cost Basis line + padded y1 axis
+   BTC Tracker – dynamic per-day Cost Basis line
    ------------------------------------------------------------------ */
 
-let priceChart              = null;
-let originalPriceData       = [];
-let originalCostBasisData   = [];   // NEW
-let originalPurchaseData    = [];
-let originalGainData        = [];
+let priceChart               = null;
+let originalPriceData        = [];
+let originalCostBasisData    = [];
+let originalPurchaseData     = [];
+let originalGainData         = [];
 
-// ─────────────────────────────────────────────────────────── CSV fetch
+/* ───────────────────────────── CSV fetch */
 async function fetchCSV(url) {
-    const response = await fetch(url + '?cache=' + Date.now());
-    if (!response.ok) throw new Error(`Failed to load ${url}`);
-    const text = await response.text();
-    return new Promise(resolve => {
-        Papa.parse(text, { header: true, complete: res => resolve(res.data) });
-    });
+    const res = await fetch(url + '?cache=' + Date.now());
+    if (!res.ok) throw new Error(`Failed to load ${url}`);
+    const text = await res.text();
+    return new Promise(resolve => Papa.parse(text, {
+        header: true, complete: r => resolve(r.data)
+    }));
 }
 
-// ─────────────────────────────────────────────────────── BTC metrics
+/* ───────────────────────────── BTC metrics */
 async function getBtcMetrics() {
     try {
         const res  = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin');
-        if (!res.ok) throw new Error(`Failed to fetch BTC metrics (${res.status})`);
-        const data = await res.json();
-        const btc  = data[0];
+        if (!res.ok) throw new Error(`status ${res.status}`);
+        const btc  = (await res.json())[0];
         return {
-            currentPrice:     btc.current_price,
-            marketCap:        btc.market_cap,
-            volume24h:        btc.total_volume,
-            priceChange24h:   btc.price_change_percentage_24h
+            currentPrice:   btc.current_price,
+            marketCap:      btc.market_cap,
+            volume24h:      btc.total_volume,
+            priceChange24h: btc.price_change_percentage_24h
         };
-    } catch (err) {
-        console.error('Error fetching BTC metrics:', err);
-        // fallback demo values
+    } catch (e) {
+        console.error('BTC metrics fallback', e);
         return { currentPrice: 93162, marketCap: 0, volume24h: 0, priceChange24h: 0 };
     }
 }
 
-// ───────────────────────────────────────────────── Blockchain metrics
+/* ───────────────────────────── Blockchain metrics */
 async function getBlockchainMetrics() {
     try {
-        const [heightRes, diffRes, rewardRes, statsRes] = await Promise.all([
+        const [h,d,r,s] = await Promise.all([
             fetch('https://blockchain.info/q/getblockcount'),
             fetch('https://blockchain.info/q/getdifficulty'),
             fetch('https://blockchain.info/q/bcperblock'),
             fetch('https://blockchain.info/stats?format=json')
         ]);
-        if (!heightRes.ok || !diffRes.ok || !rewardRes.ok || !statsRes.ok)
-            throw new Error('Failed to fetch blockchain metrics');
-
+        if (![h,d,r,s].every(x => x.ok)) throw new Error('One call failed');
         return {
-            blockHeight: parseInt(await heightRes.text()),
-            difficulty:  parseFloat(await diffRes.text()),
-            blockReward: parseFloat(await rewardRes.text()),     // satoshis
-            hashRate:    (await statsRes.json()).hash_rate / 1e9 // EH/s
+            blockHeight: +await h.text(),
+            difficulty : +await d.text(),
+            blockReward: +await r.text(),
+            hashRate   : (await s.json()).hash_rate / 1e9 // EH/s
         };
-    } catch (err) {
-        console.error('Error fetching blockchain metrics:', err);
-        // rough fallback demo values
-        return { blockHeight: 514_714, difficulty: 110.57e12, blockReward: 3.521, hashRate: 200 };
+    } catch (e) {
+        console.error('Blockchain metrics fallback', e);
+        return { blockHeight: 514714, difficulty: 110.57e12, blockReward: 3.521, hashRate: 200 };
     }
 }
 
-// ─────────────────────────────────────────────── cumulative gain calc
-function calculateGainData(purchases, historicalPrices) {
-    const sorted = [...purchases].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
-    let cumBtc = 0, cumCost = 0;
-    const costBasisTimeline = sorted.map(p => {
-        cumBtc  += p.quantity;
-        cumCost += p.totalCost;
+/* ───────────────────────────── Helpers */
+function buildCostBasisTimeline(purchases) {
+    const sorted = [...purchases].sort((a,b)=> new Date(a.timestamp)-new Date(b.timestamp));
+    let btc = 0, cost = 0;
+    return sorted.map(p => {
+        btc  += p.quantity;
+        cost += p.totalCost;
         return {
             timestamp: new Date(p.timestamp + ' UTC'),
-            costBasis: cumBtc > 0 ? cumCost / cumBtc : 0,
-            totalBtc:  cumBtc
+            costBasis: btc ? cost / btc : 0,
+            totalBtc : btc
         };
     });
-
-    return historicalPrices.map(row => {
-        const ts    = new Date(row.Date);
-        const price = parseFloat((row.Price || '').replace(/[^0-9.]/g,''));
-        const last  = costBasisTimeline.filter(p => p.timestamp <= ts).slice(-1)[0] || { costBasis:0,totalBtc:0 };
-        const gain  = last.totalBtc > 0 ? (price - last.costBasis) * last.totalBtc : 0;
-        return { x: ts, y: gain };
-    }).filter(pt => !isNaN(pt.x) && !isNaN(pt.y));
 }
 
-// ─────────────────────────────────────────────────── date-range filter
-function filterDataByDateRange(startDate, endDate) {
-    const f = (arr) => arr.filter(pt => pt.x >= startDate && pt.x <= endDate);
+function buildGainSeries(costTimeline, hist) {
+    return hist.map(row => {
+        const ts    = new Date(row.Date);
+        const price = parseFloat((row.Price || '').replace(/[^0-9.]/g,''));
+        const last  = costTimeline.filter(t => t.timestamp <= ts).slice(-1)[0]
+                    || { costBasis: 0, totalBtc: 0 };
+        const gain  = last.totalBtc ? (price - last.costBasis) * last.totalBtc : 0;
+        return { x: ts, y: gain };
+    }).filter(p => !isNaN(p.x) && !isNaN(p.y));
+}
 
-    const filteredPriceData      = f(originalPriceData);
-    const filteredCostBasisData  = f(originalCostBasisData);
-    const filteredCoinbaseData   = originalPurchaseData.filter(pt => pt.x >= startDate && pt.x <= endDate && pt.exchange.toLowerCase()==='coinbase');
-    const filteredGeminiData     = originalPurchaseData.filter(pt => pt.x >= startDate && pt.x <= endDate && pt.exchange.toLowerCase()==='gemini');
-    const filteredVenmoData      = originalPurchaseData.filter(pt => pt.x >= startDate && pt.x <= endDate && pt.exchange.toLowerCase()==='venmo');
-    const filteredGainData       = f(originalGainData);
+/* ───────────────────────────── Filter */
+function filterDataByDateRange(s, e) {
+    const within = a => a.filter(pt => pt.x >= s && pt.x <= e);
 
-    priceChart.data.datasets[0].data = filteredPriceData;
-    priceChart.data.datasets[1].data = filteredCostBasisData;
-    priceChart.data.datasets[2].data = filteredCoinbaseData;
-    priceChart.data.datasets[2].pointRadius      = filteredCoinbaseData.map(p=>p.radius);
-    priceChart.data.datasets[2].pointHoverRadius = filteredCoinbaseData.map(p=>p.hoverRadius);
-    priceChart.data.datasets[3].data = filteredGeminiData;
-    priceChart.data.datasets[3].pointRadius      = filteredGeminiData.map(p=>p.radius);
-    priceChart.data.datasets[3].pointHoverRadius = filteredGeminiData.map(p=>p.hoverRadius);
-    priceChart.data.datasets[4].data = filteredVenmoData;
-    priceChart.data.datasets[4].pointRadius      = filteredVenmoData.map(p=>p.radius);
-    priceChart.data.datasets[4].pointHoverRadius = filteredVenmoData.map(p=>p.hoverRadius);
-    priceChart.data.datasets[5].data = filteredGainData;
+    const priceData     = within(originalPriceData);
+    const cbData        = within(originalCostBasisData);
+    const coinbaseData  = within(originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='coinbase'));
+    const geminiData    = within(originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='gemini'));
+    const venmoData     = within(originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='venmo'));
+    const gainData      = within(originalGainData);
+
+    priceChart.data.datasets[0].data = priceData;
+    priceChart.data.datasets[1].data = cbData;
+    priceChart.data.datasets[2].data = coinbaseData;
+    priceChart.data.datasets[2].pointRadius      = coinbaseData.map(p=>p.radius);
+    priceChart.data.datasets[2].pointHoverRadius = coinbaseData.map(p=>p.hoverRadius);
+    priceChart.data.datasets[3].data = geminiData;
+    priceChart.data.datasets[3].pointRadius      = geminiData.map(p=>p.radius);
+    priceChart.data.datasets[3].pointHoverRadius = geminiData.map(p=>p.hoverRadius);
+    priceChart.data.datasets[4].data = venmoData;
+    priceChart.data.datasets[4].pointRadius      = venmoData.map(p=>p.radius);
+    priceChart.data.datasets[4].pointHoverRadius = venmoData.map(p=>p.hoverRadius);
+    priceChart.data.datasets[5].data = gainData;
 
     priceChart.update();
 }
 
-// ─────────────────────────────────────────────── slider initialisation
+/* ───────────────────────────── Slider */
 function initializeSlider(minDate, maxDate) {
     const slider = document.getElementById('date-range-slider');
     const labels = document.getElementById('date-range-labels');
     const maxRetries = 10;
-    let retries = 0;
-
-    function tryInit() {
+    let tries = 0;
+    (function tryInit(){
         if (typeof noUiSlider !== 'undefined') {
-            noUiSlider.create(slider, {
-                start: [minDate.getTime(), maxDate.getTime()],
-                connect: true,
-                range: { min: minDate.getTime(), max: maxDate.getTime() },
-                step: 24*60*60*1000,
-                behaviour: 'drag'
+            noUiSlider.create(slider,{
+                start:[minDate.getTime(), maxDate.getTime()],
+                connect:true,
+                range:{min:minDate.getTime(), max:maxDate.getTime()},
+                step:24*60*60*1000,
+                behaviour:'drag'
             });
-
-            slider.noUiSlider.on('update', values => {
-                const [s,e] = values.map(v=>new Date(+v));
+            slider.noUiSlider.on('update',v=>{
+                const [s,e] = v.map(n=>new Date(+n));
                 labels.innerHTML = `<span>${s.toLocaleDateString('en-US',{month:'short',year:'numeric'})}</span>
                                     <span>${e.toLocaleDateString('en-US',{month:'short',year:'numeric'})}</span>`;
                 filterDataByDateRange(s,e);
             });
-
             labels.innerHTML = `<span>${minDate.toLocaleDateString('en-US',{month:'short',year:'numeric'})}</span>
                                 <span>${maxDate.toLocaleDateString('en-US',{month:'short',year:'numeric'})}</span>`;
-        } else if (++retries<=maxRetries) {
-            console.log(`Retrying slider init (${retries}/${maxRetries})…`);
+        } else if (++tries<=maxRetries) {
             setTimeout(tryInit,500);
         } else {
-            console.error('Failed to load noUiSlider');
-            document.getElementById('chart-error').innerText = 'Error: Date slider not available.';
+            document.getElementById('chart-error').innerText='Date slider unavailable';
             slider.style.display = labels.style.display = 'none';
         }
-    }
-    tryInit();
+    })();
 }
 
-// ────────────────────────────────────────────────────────── main driver
-async function updateTracker() {
-    try {
-        /* ─── Load CSVs ─────────────────────────────────────── */
-        const [transactions, historicalPrices] = await Promise.all([
+/* ───────────────────────────── Main */
+async function updateTracker(){
+    try{
+        /* ---------- Load CSV ---------- */
+        const [transactions, historic] = await Promise.all([
             fetchCSV('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/transactions.csv'),
             fetchCSV('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/historical_btc_prices.csv')
         ]);
 
-        /* ─── Live metrics ─────────────────────────────────── */
+        /* ---------- Metrics ---------- */
         const btcMetrics        = await getBtcMetrics();
         const blockchainMetrics = await getBlockchainMetrics();
         const currentPrice      = btcMetrics.currentPrice;
 
-        /* ─── Transactions to objects ──────────────────────── */
-        const purchases = transactions.map(row => ({
-            timestamp:         row.Timestamp,
-            quantity:          parseFloat(row["Quantity Transacted"]),
-            totalCost:         parseFloat((row["Total"]||'').replace(/[^0-9.]/g,'')),
-            priceAtTransaction:parseFloat((row["Price at Transaction"]||'').replace(/[^0-9.]/g,'')),
-            exchange:          row.Exchange
-        })).filter(p => ![p.quantity,p.totalCost,p.priceAtTransaction].some(isNaN) && p.exchange);
+        /* ---------- Purchases array ---------- */
+        const purchases = transactions.map(r=>({
+            timestamp : r.Timestamp,
+            quantity  : +r["Quantity Transacted"],
+            totalCost : +((r["Total"]||'').replace(/[^0-9.]/g,'')),
+            priceAtTransaction : +((r["Price at Transaction"]||'').replace(/[^0-9.]/g,'')),
+            exchange  : r.Exchange
+        })).filter(p=>!isNaN(p.quantity)&&!isNaN(p.totalCost)&&!isNaN(p.priceAtTransaction)&&p.exchange);
 
-        /* ─── Portfolio math ───────────────────────────────── */
-        const totalBtc      = purchases.reduce((s,p)=>s+p.quantity,0);
-        const maxBtcQty     = Math.max(...purchases.map(p=>p.quantity));
-        const totalInvested = purchases.reduce((s,p)=>s+p.totalCost,0);
-        const costBasis     = totalBtc>0 ? totalInvested/totalBtc : 0;
-        const currentValue  = totalBtc*currentPrice;
-        const gainLoss      = currentValue - totalInvested;
-        const gainPct       = totalInvested>0 ? gainLoss/totalInvested*100 : 0;
+        /* ---------- Portfolio maths ---------- */
+        const totalBtc  = purchases.reduce((s,p)=>s+p.quantity,0);
+        const invested  = purchases.reduce((s,p)=>s+p.totalCost,0);
+        const costBasis = totalBtc ? invested/totalBtc : 0;
+        const currentVal= totalBtc * currentPrice;
+        const gainLoss  = currentVal - invested;
+        const gainPct   = invested ? gainLoss/invested*100 : 0;
 
-        /* ─── DOM portfolio widgets ────────────────────────── */
-        const $ = (id)=>document.getElementById(id);
-        $('total-btc').innerText       = totalBtc.toFixed(8);
-        $('invested').innerText        = totalInvested.toLocaleString('en-US',{style:'currency',currency:'USD'});
-        $('cost-basis').innerText      = costBasis.toLocaleString('en-US',{style:'currency',currency:'USD'});
-        $('current-value').innerText   = currentValue.toLocaleString('en-US',{style:'currency',currency:'USD'});
-        $('gain-loss').innerHTML       = `<span class="${gainLoss>=0?'positive':'negative'}">
-                                             ${gainLoss>=0?'+':''}${gainLoss.toLocaleString('en-US',{style:'currency',currency:'USD'})}
-                                             <span class="percentage">(${gainPct.toFixed(2)}%)</span>
-                                          </span>`;
+        /* ---------- DOM update ---------- */
+        const $=id=>document.getElementById(id);
+        $('total-btc').innerText     = totalBtc.toFixed(8);
+        $('invested').innerText      = invested.toLocaleString('en-US',{style:'currency',currency:'USD'});
+        $('cost-basis').innerText    = costBasis.toLocaleString('en-US',{style:'currency',currency:'USD'});
+        $('current-value').innerText = currentVal.toLocaleString('en-US',{style:'currency',currency:'USD'});
+        $('gain-loss').innerHTML     = `<span class="${gainLoss>=0?'positive':'negative'}">
+                                            ${gainLoss>=0?'+':''}${gainLoss.toLocaleString('en-US',{style:'currency',currency:'USD'})}
+                                            <span class="percentage">(${gainPct.toFixed(2)}%)</span>
+                                         </span>`;
 
-        $('btc-price').innerText       = currentPrice.toLocaleString('en-US',{style:'currency',currency:'USD'});
-        $('btc-market-cap').innerText  = btcMetrics.marketCap.toLocaleString('en-US',{style:'currency',currency:'USD'});
-        $('btc-volume').innerText      = btcMetrics.volume24h.toLocaleString('en-US',{style:'currency',currency:'USD'});
-        $('btc-price-change').innerHTML= `<span class="${btcMetrics.priceChange24h>=0?'positive':'negative'}">
-                                             ${btcMetrics.priceChange24h>=0?'+':''}${btcMetrics.priceChange24h.toFixed(2)}%
-                                          </span>`;
+        $('btc-price').innerText     = currentPrice.toLocaleString('en-US',{style:'currency',currency:'USD'});
+        $('btc-market-cap').innerText= btcMetrics.marketCap.toLocaleString('en-US',{style:'currency',currency:'USD'});
+        $('btc-volume').innerText    = btcMetrics.volume24h.toLocaleString('en-US',{style:'currency',currency:'USD'});
+        $('btc-price-change').innerHTML = `<span class="${btcMetrics.priceChange24h>=0?'positive':'negative'}">
+                                               ${btcMetrics.priceChange24h>=0?'+':''}${btcMetrics.priceChange24h.toFixed(2)}%
+                                           </span>`;
 
-        $('btc-block-height').innerText= blockchainMetrics.blockHeight.toLocaleString();
-        $('btc-difficulty').innerText  = (blockchainMetrics.difficulty/1e12).toFixed(2)+' T';
-        $('btc-hash-rate').innerText   = blockchainMetrics.hashRate.toFixed(2)+' EH/s';
-        $('btc-block-reward').innerText= blockchainMetrics.blockReward.toFixed(3)+' BTC';
+        $('btc-block-height').innerText = blockchainMetrics.blockHeight.toLocaleString();
+        $('btc-difficulty').innerText   = (blockchainMetrics.difficulty/1e12).toFixed(2)+' T';
+        $('btc-hash-rate').innerText    = blockchainMetrics.hashRate.toFixed(2)+' EH/s';
+        $('btc-block-reward').innerText = blockchainMetrics.blockReward.toFixed(3)+' BTC';
 
-        /* ─── Build series arrays ──────────────────────────── */
-        originalPriceData = historicalPrices.map(r=>{
-            const ts = new Date(r.Date);
-            const y  = parseFloat((r.Price||'').replace(/[^0-9.]/g,''));
-            return { x:ts, y };
+        /* ---------- Build time-series ---------- */
+        originalPriceData = historic.map(r=>{
+            const ts=new Date(r.Date);
+            const y =+((r.Price||'').replace(/[^0-9.]/g,''));
+            return {x:ts,y};
         }).filter(pt=>!isNaN(pt.x)&&!isNaN(pt.y));
 
-        // NEW: cost-basis line (flat at average cost)
-        originalCostBasisData = originalPriceData.map(pt=>({ x:pt.x, y:costBasis }));
-
+        const maxQty = Math.max(...purchases.map(p=>p.quantity));
         originalPurchaseData = purchases.map(p=>{
-            const ts = new Date(p.timestamp);
-            const ratio = maxBtcQty>0 ? p.quantity/maxBtcQty : 0;
-            const frac  = ratio>0 ? Math.log1p(ratio)/Math.log1p(1) : 0;
+            const ts=new Date(p.timestamp);
+            const frac=maxQty?Math.log1p(p.quantity/maxQty)/Math.log1p(1):0;
             const rMin=4,rMax=20;
             return {
-                x:ts, y:p.priceAtTransaction,
-                quantity:p.quantity, cost:p.totalCost,
+                x:ts,y:p.priceAtTransaction,
+                quantity:p.quantity,cost:p.totalCost,
                 radius:rMin+frac*(rMax-rMin),
                 hoverRadius:rMin+frac*(rMax-rMin)+2,
                 exchange:p.exchange
             };
         });
 
-        originalGainData = calculateGainData(purchases,historicalPrices);
+        const costTimeline          = buildCostBasisTimeline(purchases);
+        originalCostBasisData = originalPriceData.map(pt=>{
+            const last = costTimeline.filter(t=>t.timestamp<=pt.x).slice(-1)[0] || {costBasis:0};
+            return { x: pt.x, y: last.costBasis };
+        });
+        originalGainData = buildGainSeries(costTimeline,historic);
 
-        /* ─── y1 padded max for gain axis ─────────────────── */
+        /* ---------- Axis padding ---------- */
         const y1Max = Math.max(...originalGainData.map(d=>d.y))*1.25;
 
-        /* ─── Build chart ─────────────────────────────────── */
-        if (priceChart) priceChart.destroy();
-        const ctx = document.getElementById('priceChart').getContext('2d');
-        priceChart = new Chart(ctx,{
+        /* ---------- Build/refresh chart ---------- */
+        if(priceChart) priceChart.destroy();
+        const ctx=document.getElementById('priceChart').getContext('2d');
+        priceChart=new Chart(ctx,{
             type:'line',
-            data:{ datasets:[
+            data:{datasets:[
                 /* 0 */{
                     label:'BTC Price (USD)',
-                    data: originalPriceData,
-                    borderColor:'#ffffff',
+                    data:originalPriceData,
+                    borderColor:'#fff',
                     backgroundColor:'rgba(255,255,255,0.03)',
-                    fill:false, tension:0.3, pointRadius:0, yAxisID:'y', order:1
+                    fill:false,tension:0.3,pointRadius:0,yAxisID:'y',order:1
                 },
-                /* 1 – NEW */{
+                /* 1 */{
                     label:'Cost Basis (USD)',
-                    data: originalCostBasisData,
+                    data:originalCostBasisData,
                     borderColor:'#FFA500',
                     backgroundColor:'rgba(255,165,0,0.08)',
                     borderDash:[6,4],
-                    fill:false, tension:0, pointRadius:0, yAxisID:'y', order:1
+                    fill:false,tension:0,pointRadius:0,yAxisID:'y',order:1
                 },
                 /* 2 */{
                     label:'Coinbase Purchases',
-                    data: originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='coinbase'),
+                    data:originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='coinbase'),
                     type:'scatter',
                     backgroundColor:'#1E90FF',
-                    pointRadius: originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='coinbase').map(p=>p.radius),
-                    pointHoverRadius: originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='coinbase').map(p=>p.hoverRadius),
-                    borderColor:'#000', borderWidth:1, yAxisID:'y', order:0
+                    pointRadius:originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='coinbase').map(p=>p.radius),
+                    pointHoverRadius:originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='coinbase').map(p=>p.hoverRadius),
+                    borderColor:'#000',borderWidth:1,yAxisID:'y',order:0
                 },
                 /* 3 */{
                     label:'Gemini Purchases',
-                    data: originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='gemini'),
+                    data:originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='gemini'),
                     type:'scatter',
                     backgroundColor:'#800080',
-                    pointRadius: originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='gemini').map(p=>p.radius),
-                    pointHoverRadius: originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='gemini').map(p=>p.hoverRadius),
-                    borderColor:'#000', borderWidth:1, yAxisID:'y', order:0
+                    pointRadius:originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='gemini').map(p=>p.radius),
+                    pointHoverRadius:originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='gemini').map(p=>p.hoverRadius),
+                    borderColor:'#000',borderWidth:1,yAxisID:'y',order:0
                 },
                 /* 4 */{
                     label:'Venmo Purchases',
-                    data: originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='venmo'),
+                    data:originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='venmo'),
                     type:'scatter',
                     backgroundColor:'#00FF00',
-                    pointRadius: originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='venmo').map(p=>p.radius),
-                    pointHoverRadius: originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='venmo').map(p=>p.hoverRadius),
-                    borderColor:'#000', borderWidth:1, yAxisID:'y', order:0
+                    pointRadius:originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='venmo').map(p=>p.radius),
+                    pointHoverRadius:originalPurchaseData.filter(p=>p.exchange.toLowerCase()==='venmo').map(p=>p.hoverRadius),
+                    borderColor:'#000',borderWidth:1,yAxisID:'y',order:0
                 },
                 /* 5 */{
                     label:'Cumulative Gain (USD)',
-                    data: originalGainData,
+                    data:originalGainData,
                     borderColor:'#39FF14',
                     backgroundColor:'rgba(57,255,20,0.1)',
-                    fill:false, tension:0.3, pointRadius:0, yAxisID:'y1', order:2
+                    fill:false,tension:0.3,pointRadius:0,yAxisID:'y1',order:2
                 }
             ]},
             options:{
                 responsive:true,
                 scales:{
-                    x:{
-                        type:'time',
-                        time:{ unit:'month', displayFormats:{ month:'MMM yy' }},
-                        title:{ display:true, text:'Date', color:'#fff', font:{size:14}},
-                        grid:{ color:'#444' }, ticks:{ color:'#fff'}
-                    },
-                    y:{
-                        title:{ display:true, text:'Price (USD)', color:'#fff', font:{size:14}},
-                        grid:{ color:'#444' },
-                        ticks:{ color:'#fff', callback:v=>v.toLocaleString()}
-                    },
-                    y1:{
-                        position:'right',
-                        title:{ display:true, text:'Cumulative Gain (USD)', color:'#fff', font:{size:14}},
-                        grid:{ drawOnChartArea:false },
-                        ticks:{ color:'#fff', callback:v=>v.toLocaleString()},
-                        suggestedMax: y1Max
-                    }
+                    x:{type:'time',time:{unit:'month',displayFormats:{month:'MMM yy'}},
+                       title:{display:true,text:'Date',color:'#fff',font:{size:14}},
+                       grid:{color:'#444'},ticks:{color:'#fff'}},
+                    y:{title:{display:true,text:'Price (USD)',color:'#fff',font:{size:14}},
+                       grid:{color:'#444'},ticks:{color:'#fff',callback:v=>v.toLocaleString()}},
+                    y1:{position:'right',
+                        title:{display:true,text:'Cumulative Gain (USD)',color:'#fff',font:{size:14}},
+                        grid:{drawOnChartArea:false},
+                        ticks:{color:'#fff',callback:v=>v.toLocaleString()},
+                        suggestedMax:y1Max}
                 },
                 plugins:{
-                    legend:{ labels:{ color:'#fff', font:{size:12}}},
+                    legend:{labels:{color:'#fff',font:{size:12}}},
                     tooltip:{
                         backgroundColor:'rgba(0,0,0,0.8)',
-                        titleColor:'#fff', bodyColor:'#fff',
+                        titleColor:'#fff',bodyColor:'#fff',
                         callbacks:{
-                            label: ctx=>{
+                            label:ctx=>{
                                 const lbl=ctx.dataset.label;
                                 if(['Coinbase Purchases','Gemini Purchases','Venmo Purchases'].includes(lbl)){
-                                    const p = ctx.raw;
+                                    const p=ctx.raw;
                                     return `${lbl}: Bought ${p.quantity.toFixed(8)} BTC for ${p.cost.toLocaleString('en-US',{style:'currency',currency:'USD'})}`;
-                                } else if(lbl==='Cumulative Gain (USD)'){
-                                    return `Gain: ${ctx.parsed.y.toLocaleString()}`;
-                                } else if(lbl==='Cost Basis (USD)'){
-                                    return `Cost Basis: ${costBasis.toLocaleString('en-US',{style:'currency',currency:'USD'})}`;
                                 }
+                                if(lbl==='Cumulative Gain (USD)')  return `Gain: ${ctx.parsed.y.toLocaleString()}`;
+                                if(lbl==='Cost Basis (USD)')      return `Cost Basis: ${ctx.parsed.y.toLocaleString('en-US',{style:'currency',currency:'USD'})}`;
                                 return `Price: ${ctx.parsed.y.toLocaleString()}`;
                             }
                         }
@@ -337,16 +320,17 @@ async function updateTracker() {
             }
         });
 
-        /* ─── Date-range slider ────────────────────────────── */
-        const minDate = new Date(Math.min(...originalPriceData.map(d=>d.x)));
-        const maxDate = new Date(new Date().setDate(new Date().getDate()+60));
-        initializeSlider(minDate,maxDate);
+        /* ---------- Slider ---------- */
+        initializeSlider(
+            new Date(Math.min(...originalPriceData.map(d=>d.x))),
+            new Date(new Date().setDate(new Date().getDate()+60))
+        );
 
-    } catch(err) {
-        console.error('Error:',err);
-        document.getElementById('chart-error').innerText = `Error: ${err.message}`;
+    }catch(e){
+        console.error(e);
+        document.getElementById('chart-error').innerText=`Error: ${e.message}`;
     }
 }
 
-// ───────────────────────────────────────────────────────── on-load
+/* ───────────────────────────── on-load */
 updateTracker();
