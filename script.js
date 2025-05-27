@@ -271,11 +271,12 @@ async function updateTracker() {
         if (originalPriceData.length === 0 || originalPurchaseData.length === 0) {
             document.getElementById('chart-error').innerText = 'Error: No valid data available to plot.';
 
+       }
+
         // --- calculate a padded max for the y1 axis -------------------------------
         const maxGain = Math.max(...originalGainData.map(d => d.y));   // highest $ gain so far
         const y1Max   = maxGain * 1.15;                                // +15 % breathing room
-        }
-
+       
         const ctx = document.getElementById('priceChart').getContext('2d');
         if (priceChart) priceChart.destroy();
         priceChart = new Chart(ctx, {
