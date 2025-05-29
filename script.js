@@ -1,3 +1,5 @@
+ok I think it is fixed now:
+
 /* ------------------------------------------------------------------
    BTC Tracker – dynamic per-day Cost Basis line
    ------------------------------------------------------------------ */
@@ -60,32 +62,22 @@ async function getBlockchainMetrics() {
 
 /* ───────────────────────────── Helpers */
 function buildCostBasisTimeline(purchases) {
-    const sorted = [...purchases].sort((a,b)=> safeDate(a.timestamp) - safeDate(b.timestamp));
+    const sorted = [...purchases].sort((a,b)=> new Date(a.timestamp)-new Date(b.timestamp));
     let btc = 0, cost = 0;
     return sorted.map(p => {
         btc  += p.quantity;
         cost += p.totalCost;
         return {
-            timestamp: safeDate(p.timestamp),
+            timestamp: new Date(p.timestamp + ' UTC'),
             costBasis: btc ? cost / btc : 0,
             totalBtc : btc
         };
     });
 }
 
-// ───────────────────────────── Safe ISO date for all browsers
-function safeDate(str) {
-  if (!str) return new Date(NaN);                  // guard
-  const iso = str.trim().replace(' ', 'T');        // "2025-05-04T08:02:00"
-  return new Date(/Z$|[+-]\d{2}:\d{2}$/.test(iso)  // if it already ends in Z or +HH:MM, keep it
-                 ? iso
-                 : iso + 'Z');                     // otherwise assume UTC
-}
-
-
 function buildGainSeries(costTimeline, hist) {
     return hist.map(row => {
-        const ts    = safeDate(row.Date);
+        const ts    = new Date(row.Date);
         const price = parseFloat((row.Price || '').replace(/[^0-9.]/g,''));
         const last  = costTimeline.filter(t => t.timestamp <= ts).slice(-1)[0]
                     || { costBasis: 0, totalBtc: 0 };
@@ -212,11 +204,11 @@ async function updateTracker(){
          if (tableBody) {
            tableBody.innerHTML = '';                                       // clear old rows
            purchases
-             .sort((a, b) => safeDate(b.timestamp) - safeDate(a.timestamp)) // newest first
+             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)) // newest first
              .forEach(p => {
                const tr = document.createElement('tr');
                tr.innerHTML = `
-                 <td>${safeDate(p.timestamp).toLocaleDateString()}</td>
+                 <td>${new Date(p.timestamp).toLocaleDateString()}</td>
                  <td>${p.quantity.toFixed(8)}</td>
                  <td>${p.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
                  <td>${p.priceAtTransaction.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
@@ -228,14 +220,14 @@ async function updateTracker(){
        
         /* ---------- Build time-series ---------- */
         originalPriceData = historic.map(r=>{
-            const ts=safeDate(r.Date);
+            const ts=new Date(r.Date);
             const y =+((r.Price||'').replace(/[^0-9.]/g,''));
             return {x:ts,y};
         }).filter(pt=>!isNaN(pt.x)&&!isNaN(pt.y));
 
         const maxQty = Math.max(...purchases.map(p=>p.quantity));
         originalPurchaseData = purchases.map(p=>{
-            const ts=safeDate(p.timestamp);
+            const ts=new Date(p.timestamp);
             const frac=maxQty?Math.log1p(p.quantity/maxQty)/Math.log1p(1):0;
             const rMin=4,rMax=20;
             return {
