@@ -2,6 +2,7 @@
    BTC Tracker – dynamic per-day Cost Basis line
    ------------------------------------------------------------------ */
 
+
 let priceChart               = null;
 let originalPriceData        = [];
 let originalCostBasisData    = [];
@@ -66,16 +67,23 @@ function buildCostBasisTimeline(purchases) {
         btc  += p.quantity;
         cost += p.totalCost;
         return {
-            timestamp: new Date(p.timestamp + ' UTC'),
+            timestamp: new Date(fixIso(p.timestamp)),
             costBasis: btc ? cost / btc : 0,
             totalBtc : btc
         };
     });
 }
 
+// ───────────────────────────── Make any "YYYY-MM-DD HH:MM:SS" ISO-safe
+function fixIso(s) {
+  return (s && typeof s === 'string')
+         ? s.replace(' ', 'T') + 'Z'   // → "2025-05-04T08:02:00Z"
+         : s;
+}
+
 function buildGainSeries(costTimeline, hist) {
     return hist.map(row => {
-        const ts    = new Date(row.Date);
+        const ts    = new Date(fixIso(row.Date));
         const price = parseFloat((row.Price || '').replace(/[^0-9.]/g,''));
         const last  = costTimeline.filter(t => t.timestamp <= ts).slice(-1)[0]
                     || { costBasis: 0, totalBtc: 0 };
@@ -159,7 +167,7 @@ async function updateTracker(){
 
         /* ---------- Purchases array ---------- */
         const purchases = transactions.map(r=>({
-            timestamp : r.Timestamp,
+            timestamp : fixIso(r.Timestamp),
             quantity  : +r["Quantity Transacted"],
             totalCost : +((r["Total"]||'').replace(/[^0-9.]/g,'')),
             priceAtTransaction : +((r["Price at Transaction"]||'').replace(/[^0-9.]/g,'')),
@@ -217,11 +225,11 @@ async function updateTracker(){
 
        
         /* ---------- Build time-series ---------- */
-        originalPriceData = historic.map(r=>{
-            const ts=new Date(r.Date);
-            const y =+((r.Price||'').replace(/[^0-9.]/g,''));
-            return {x:ts,y};
-        }).filter(pt=>!isNaN(pt.x)&&!isNaN(pt.y));
+      originalPriceData = historic.map(r => {
+        const ts = new Date(fixIso(r.Date));      // Safari-safe ISO
+        const y  = +((r.Price || '').replace(/[^0-9.]/g, ''));
+        return { x: ts, y };
+      }).filter(pt => !isNaN(pt.x) && !isNaN(pt.y));
 
         const maxQty = Math.max(...purchases.map(p=>p.quantity));
         originalPurchaseData = purchases.map(p=>{
