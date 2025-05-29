@@ -74,19 +74,20 @@ function buildCostBasisTimeline(purchases) {
     });
 }
 
-// ───────────────────────────── Normalize any date string for all browsers
+// ───────────────────────────── Make any "YYYY-MM-DD HH:MM:SS" ISO-safe
 function fixIso(s) {
   if (!s || typeof s !== 'string') return s;
   const str = s.trim();
 
-  // If it already has a time part, just be sure it ends with Z or ±HH:MM
+  // Already has a time part
   if (str.includes('T')) {
     return /Z$|[+-]\d{2}:\d{2}$/.test(str) ? str : str + 'Z';
   }
 
-  // Date-only → add midnight UTC
-  return str + 'T00:00:00Z';                // "2022-02-01T00:00:00Z"
+  // Date-only → add a midnight time + Z
+  return str + 'T00:00:00Z';               // "2022-02-01T00:00:00Z"
 }
+
 
 
 function buildGainSeries(costTimeline, hist) {
