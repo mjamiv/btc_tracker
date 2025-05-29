@@ -166,12 +166,12 @@ async function updateTracker(){
         const currentPrice      = btcMetrics.currentPrice;
 
         /* ---------- Purchases array ---------- */
-        const purchases = transactions.map(r=>({
-            timestamp : fixIso(r.Timestamp),
-            quantity  : +r["Quantity Transacted"],
-            totalCost : +((r["Total"]||'').replace(/[^0-9.]/g,'')),
-            priceAtTransaction : +((r["Price at Transaction"]||'').replace(/[^0-9.]/g,'')),
-            exchange  : r.Exchange
+      const purchases = transactions.map(r => ({
+        timestamp : fixIso(r.Timestamp).split('T')[0],   // ← keep **date only**
+        quantity  : +r["Quantity Transacted"],
+        totalCost : +((r["Total"] || '').replace(/[^0-9.]/g, '')),
+        priceAtTransaction : +((r["Price at Transaction"] || '').replace(/[^0-9.]/g, '')),
+        exchange  : r.Exchange
         })).filter(p=>!isNaN(p.quantity)&&!isNaN(p.totalCost)&&!isNaN(p.priceAtTransaction)&&p.exchange);
 
         /* ---------- Portfolio maths ---------- */
