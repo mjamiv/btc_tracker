@@ -32,7 +32,7 @@ async function getBtcMetrics() {
         };
     } catch (e) {
         console.error('BTC metrics fallback', e);
-        return { currentPrice: 93162, marketCap: 0, volume24h: 0, priceChange24h: 0 };
+        return { currentPrice: 69420, marketCap: 0, volume24h: 0, priceChange24h: 0 };
     }
 }
 
@@ -245,7 +245,7 @@ async function updateTracker(){
         originalGainData = buildGainSeries(costTimeline,historic);
 
         /* ---------- Axis padding ---------- */
-        const y1Max = Math.max(...originalGainData.map(d=>d.y))*1.25;
+        const y1Max = Math.max(...originalGainData.map(d=>d.y))*1.50;
 
         /* ---------- Build/refresh chart ---------- */
         if(priceChart) priceChart.destroy();
