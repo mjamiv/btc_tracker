@@ -197,6 +197,25 @@ async function updateTracker(){
         $('btc-hash-rate').innerText    = blockchainMetrics.hashRate.toFixed(2)+' EH/s';
         $('btc-block-reward').innerText = blockchainMetrics.blockReward.toFixed(3)+' BTC';
 
+         /* ---------- Transaction table ---------- */
+         const tableBody = document.getElementById('transactions-body');   // ID matches your HTML
+         if (tableBody) {
+           tableBody.innerHTML = '';                                       // clear old rows
+           purchases
+             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)) // newest first
+             .forEach(p => {
+               const tr = document.createElement('tr');
+               tr.innerHTML = `
+                 <td>${new Date(p.timestamp).toLocaleDateString()}</td>
+                 <td>${p.quantity.toFixed(8)}</td>
+                 <td>${p.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                 <td>${p.priceAtTransaction.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                 <td>${p.exchange}</td>`;
+               tableBody.appendChild(tr);
+             });
+         }
+
+       
         /* ---------- Build time-series ---------- */
         originalPriceData = historic.map(r=>{
             const ts=new Date(r.Date);
