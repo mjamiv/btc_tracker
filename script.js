@@ -76,19 +76,10 @@ function buildCostBasisTimeline(purchases) {
 
 // ───────────────────────────── Make any "YYYY-MM-DD HH:MM:SS" ISO-safe
 function fixIso(s) {
-  if (!s || typeof s !== 'string') return s;
-  const str = s.trim();
-
-  // Already has a time part
-  if (str.includes('T')) {
-    return /Z$|[+-]\d{2}:\d{2}$/.test(str) ? str : str + 'Z';
-  }
-
-  // Date-only → add a midnight time + Z
-  return str + 'T00:00:00Z';               // "2022-02-01T00:00:00Z"
+  return (s && typeof s === 'string')
+         ? s.replace(' ', 'T') + 'Z'   // → "2025-05-04T08:02:00Z"
+         : s;
 }
-
-
 
 function buildGainSeries(costTimeline, hist) {
     return hist.map(row => {
