@@ -13,7 +13,7 @@
 const keyEvents = [
    {
     date: '2024-04-20',        // ISO date string
-    label: 'Last Halving',          // text to show
+    label: '4th Halving',          // text to show
     // OPTIONAL custom styling per line:
     borderColor:  '#FFFFFF',   // override default
     borderWidth: 3,
@@ -22,12 +22,12 @@ const keyEvents = [
       position: 'end',       // top of chart
       color:     '#F7931A',
       backgroundColor: '#FFFFFF',
-      font:      { size: 10 }
+      font:      { size: 12 }
     }
    },
    {
     date: '2024-01-04',
-    label: 'US ETFs Launch',
+    label: 'US ETF Launch',
     borderColor: '#FFFFFF',
     borderWidth: 3,
     labelOptions: {
@@ -35,12 +35,12 @@ const keyEvents = [
       position:   'end',
       color:      '#0052FE',
       backgroundColor: '#FFFFFF',
-      font:       { size: 10 }
+      font:       { size: 12 }
     }
    },
    {
     date: '2024-11-05',
-    label: 'TRUMP Elected',
+    label: 'US Pres. Election',
     borderColor: '#FFFFFF',
     borderWidth: 3,
     labelOptions: {
@@ -48,7 +48,7 @@ const keyEvents = [
       position:   'end',
       color:      '#FF0000',
       backgroundColor: '#FFFFFF',
-      font:       { size: 10 }
+      font:       { size: 12 }
     }
    },
 ];
