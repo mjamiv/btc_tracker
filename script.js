@@ -18,8 +18,8 @@ const keyEvents = [
     borderColor:  '#ff4500',   // override default
     borderWidth: 3,
     labelOptions: {            // override the label block
-      rotation:  90,           // rotate text
-      position: 'start',       // top of chart
+      rotation:  270,           // rotate text
+      position: 'end',       // top of chart
       color:     '#ff4500',
       backgroundColor: 'rgba(0,0,0,0.7)',
       font:      { size: 12 }
@@ -31,8 +31,8 @@ const keyEvents = [
     borderColor: '#00aaff',
     borderWidth: 3,
     labelOptions: {
-      rotation:   90,         
-      position:   'start',
+      rotation:   270,         
+      position:   'end',
       color:      '#00aaff',
       backgroundColor: 'rgba(0,0,0,0.7)',
       font:       { size: 12 }
