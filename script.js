@@ -39,7 +39,7 @@ const keyEvents = [
     }
    },
    {
-    date: '2025-11-05',
+    date: '2024-11-05',
     label: 'TRUMP Elected',
     borderColor: '#FFFFFF',
     borderWidth: 3,
@@ -494,7 +494,7 @@ btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)
                     position: ev.labelOptions?.position || 'start',
                     rotation: ev.labelOptions?.rotation || 90,
                     color: ev.labelOptions?.color || '#fff',
-                    backgroundColor: ev.labelOptions?.backgroundColor || 'rgba(0,0,0,0.7)',
+                    backgroundColor: ev.labelOptions?.backgroundColor || '#FFFFFF',
                     font: ev.labelOptions?.font || { size: 12 }
                   }
                 };
