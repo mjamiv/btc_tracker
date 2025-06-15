@@ -15,27 +15,40 @@ const keyEvents = [
     date: '2024-04-20',        // ISO date string
     label: 'Last Halving',          // text to show
     // OPTIONAL custom styling per line:
-    borderColor:  '#ff4500',   // override default
+    borderColor:  '#FFFFFF',   // override default
     borderWidth: 3,
     labelOptions: {            // override the label block
       rotation:  270,           // rotate text
       position: 'end',       // top of chart
       color:     '#F7931A',
       backgroundColor: 'rgba(0,0,0,0.7)',
-      font:      { size: 12 }
+      font:      { size: 10 }
     }
    },
    {
     date: '2024-01-04',
     label: 'US ETFs Launch',
-    borderColor: '#00aaff',
+    borderColor: '#FFFFFF',
     borderWidth: 3,
     labelOptions: {
       rotation:   270,         
       position:   'end',
       color:      '#0052FE',
       backgroundColor: 'rgba(0,0,0,0.7)',
-      font:       { size: 12 }
+      font:       { size: 10 }
+    }
+   },
+   {
+    date: '2025-11-05',
+    label: 'TRUMP Elected',
+    borderColor: '#FFFFFF',
+    borderWidth: 3,
+    labelOptions: {
+      rotation:   270,         
+      position:   'end',
+      color:      '#FF0000',
+      backgroundColor: 'rgba(0,0,0,0.7)',
+      font:       { size: 10 }
     }
    },
 ];
