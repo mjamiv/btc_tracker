@@ -466,19 +466,18 @@ btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)
             }
           },
          annotation: {
-             // build one entry per keyEvents item:
              annotations: keyEvents.reduce((map, ev, i) => {
-               map['event' + i] = {
+               map['event'+i] = {
                  type:       'line',
                  xScaleID:   'x',
                  xMin:       ev.date,
                  xMax:       ev.date,
-                 // pull in your per-event overrides, or fallback to defaults:
                  borderColor:  ev.borderColor  || '#FF4500',
                  borderWidth:  ev.borderWidth  || 2,
                  borderDash:   ev.borderDash   || [],
                  label: {
-                   enabled: true,
+         -         enabled: true,
+         +         display: true,            // ← use display, not enabled
                    content: ev.label,
                    position:      ev.labelOptions?.position      || 'start',
                    rotation:      ev.labelOptions?.rotation      || 90,
