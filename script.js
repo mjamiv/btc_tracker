@@ -11,8 +11,33 @@
 
 // Define key dates for vertical lines (modify as needed)
 const keyEvents = [
-  { date: '2024-04-20', label: 'Halving' },
-  { date: '2025-06-10', label: 'Block Reward' }
+   {
+    date: '2024-04-20',        // ISO date string
+    label: 'Last Halving',          // text to show
+    // OPTIONAL custom styling per line:
+    borderColor:  '#ff4500',   // override default
+    borderDash:   [6,3],       // make it dashed
+    labelOptions: {            // override the label block
+      rotation:  90,           // rotate text
+      position: 'start',       // top of chart
+      color:     '#ff4500',
+      backgroundColor: 'rgba(0,0,0,0.7)',
+      font:      { size: 14 }
+    }
+   },
+   {
+    date: '2024-01-04',
+    label: 'US ETFs Launch',
+    borderColor: '#00aaff',
+    borderWidth: 3,
+    labelOptions: {
+      rotation:   270,         // flip the other way
+      position:   'end',
+      color:      '#00aaff',
+      backgroundColor: 'rgba(0,0,0,0.7)',
+      font:       { size: 12 }
+    }
+   },
 ];
 
 let priceChart = null;
@@ -440,29 +465,32 @@ btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)
               }
             }
           },
-          annotation: {
-            annotations: keyEvents.reduce((acc, ev, i) => {
-              acc['line' + i] = {
-                type: 'line',
-                xScaleID: 'x',
-                xMin: ev.date,
-                xMax: ev.date,
-                borderColor: '#FF4500',
-                borderWidth: 2,
-                label: {
-                  enabled: true,
-                  content: ev.label,
-                  position: 'start',
-                  rotation: 90,
-                  backgroundColor: 'rgba(0,0,0,0.7)',
-                  color: '#fff',
-                  font: { size: 12 }
-                }
-              };
-              return acc;
-            }, {})
-          }
-        }
+         annotation: {
+             // build one entry per keyEvents item:
+             annotations: keyEvents.reduce((map, ev, i) => {
+               map['event' + i] = {
+                 type:       'line',
+                 xScaleID:   'x',
+                 xMin:       ev.date,
+                 xMax:       ev.date,
+                 // pull in your per-event overrides, or fallback to defaults:
+                 borderColor:  ev.borderColor  || '#FF4500',
+                 borderWidth:  ev.borderWidth  || 2,
+                 borderDash:   ev.borderDash   || [],
+                 label: {
+                   enabled: true,
+                   content: ev.label,
+                   position:      ev.labelOptions?.position      || 'start',
+                   rotation:      ev.labelOptions?.rotation      || 90,
+                   color:         ev.labelOptions?.color         || '#fff',
+                   backgroundColor: ev.labelOptions?.backgroundColor || 'rgba(0,0,0,0.7)',
+                   font:          ev.labelOptions?.font          || { size: 12 }
+                 }
+               };
+               return map;
+             }, {})
+           }
+         }
       }
     });
 
