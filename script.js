@@ -21,7 +21,7 @@ const keyEvents = [
       rotation:  270,           // rotate text
       position: 'end',       // top of chart
       color:     '#F7931A',
-      backgroundColor: 'rgba(0,0,0,0.7)',
+      backgroundColor: '#FFFFFF',
       font:      { size: 10 }
     }
    },
@@ -34,7 +34,7 @@ const keyEvents = [
       rotation:   270,         
       position:   'end',
       color:      '#0052FE',
-      backgroundColor: 'rgba(0,0,0,0.7)',
+      backgroundColor: '#FFFFFF',
       font:       { size: 10 }
     }
    },
@@ -47,7 +47,7 @@ const keyEvents = [
       rotation:   270,         
       position:   'end',
       color:      '#FF0000',
-      backgroundColor: 'rgba(0,0,0,0.7)',
+      backgroundColor: '#FFFFFF',
       font:       { size: 10 }
     }
    },
