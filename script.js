@@ -20,7 +20,7 @@ const keyEvents = [
     labelOptions: {            // override the label block
       rotation:  270,           // rotate text
       position: 'end',       // top of chart
-      color:     '#ff4500',
+      color:     '#F7931A',
       backgroundColor: 'rgba(0,0,0,0.7)',
       font:      { size: 12 }
     }
@@ -33,7 +33,7 @@ const keyEvents = [
     labelOptions: {
       rotation:   270,         
       position:   'end',
-      color:      '#00aaff',
+      color:      '#0052FE',
       backgroundColor: 'rgba(0,0,0,0.7)',
       font:       { size: 12 }
     }
