@@ -16,13 +16,13 @@ const keyEvents = [
     label: 'Last Halving',          // text to show
     // OPTIONAL custom styling per line:
     borderColor:  '#ff4500',   // override default
-    borderDash:   [6,3],       // make it dashed
+    borderWidth: 3,
     labelOptions: {            // override the label block
       rotation:  90,           // rotate text
       position: 'start',       // top of chart
       color:     '#ff4500',
       backgroundColor: 'rgba(0,0,0,0.7)',
-      font:      { size: 14 }
+      font:      { size: 12 }
     }
    },
    {
@@ -31,8 +31,8 @@ const keyEvents = [
     borderColor: '#00aaff',
     borderWidth: 3,
     labelOptions: {
-      rotation:   270,         // flip the other way
-      position:   'end',
+      rotation:   90,         
+      position:   'start',
       color:      '#00aaff',
       backgroundColor: 'rgba(0,0,0,0.7)',
       font:       { size: 12 }
