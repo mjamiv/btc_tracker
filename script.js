@@ -9,9 +9,6 @@
 // <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 // <script src="https://cdn.jsdelivr.net/npm/nouislider@15.5.0/distribute/nouislider.min.js"></script>
 
-// Register the annotation plugin
-Chart.register(ChartAnnotation);
-
 // Define key dates for vertical lines (modify as needed)
 const keyEvents = [
   { date: '2024-04-20', label: 'Halving' },
