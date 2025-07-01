@@ -157,6 +157,9 @@ function filterDataByDateRange(s, e) {
   const venmoData = within(
     originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'venmo')
   );
+  const coinbitsData = within(
+    originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbits')
+  ); 
   const gainData = within(originalGainData);
 
   priceChart.data.datasets[0].data = priceData;
@@ -182,7 +185,14 @@ function filterDataByDateRange(s, e) {
   priceChart.data.datasets[4].pointHoverRadius = venmoData.map(
     p => p.hoverRadius
   );
-  priceChart.data.datasets[5].data = gainData;
+  priceChart.data.datasets[5].data = coinbitsData;
+  priceChart.data.datasets[5].pointRadius = coinbitsData.map(
+     p => p.radius
+  );
+  priceChart.data.datasets[5].pointHoverRadius = coinbitsData.map(
+     p => p.hoverRadius
+  );
+  priceChart.data.datasets[6].data = gainData;
 
   priceChart.update();
 }
@@ -423,7 +433,26 @@ btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)
           yAxisID: 'y',
           order: 0
         },
-        /* 5: Cumulative Gain */
+        /* 5: Coinbits Purchases */
+        {
+          label: 'Coinbits Purchases',
+          type:  'scatter',
+          data:  originalPurchaseData.filter(
+            p => p.exchange.toLowerCase() === 'coinbits'
+          ),
+          backgroundColor: '#FFD700',  // gold-ish
+          borderColor:     '#000',
+          borderWidth:     1,
+          pointRadius: originalPurchaseData.filter(
+             p => p.exchange.toLowerCase() === 'coinbits'
+          ).map(p => p.radius),
+          pointHoverRadius: originalPurchaseData.filter(
+             p => p.exchange.toLowerCase() === 'coinbits'
+          ).map(p => p.hoverRadius),
+          yAxisID: 'y',
+          order:   0
+         },         
+        /* 6: Cumulative Gain */
         {
           label: 'Cumulative Gain (USD)',
           data: originalGainData,
@@ -468,7 +497,7 @@ btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)
             callbacks: {
               label: ctx => {
                 const lbl = ctx.dataset.label;
-                if (['Coinbase Purchases','Gemini Purchases','Venmo Purchases'].includes(lbl)) {
+                if (['Coinbase Purchases','Gemini Purchases','Venmo Purchases','Coinbits Purchases'].includes(lbl)) {
                   const p = ctx.raw;
                   return `${lbl}: Bought ${p.quantity.toFixed(8)} BTC for ${p.cost.toLocaleString('en-US',{style:'currency',currency:'USD'})}`;
                 }
