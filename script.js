@@ -537,7 +537,7 @@ btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)
     // Initialize range slider
     initializeSlider(
       new Date(Math.min(...originalPriceData.map(d => d.x))),
-      new Date(new Date().setDate(new Date().getDate() + 60))
+      new Date(new Date().setDate(new Date().getDate() + 80))
     );
 
   } catch (e) {
