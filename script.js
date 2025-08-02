@@ -473,7 +473,8 @@ btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)
             time: { unit: 'month', displayFormats: { month: 'MMM yy' } },
             title: { display: true, text: 'Date', color: '#fff', font: { size: 14 } },
             grid: { color: '#444' },
-            ticks: { color: '#fff' }
+            ticks: { color: '#fff' },
+            suggestedMin: '2022-01-01'
           },
           y: {
             title: { display: true, text: 'Price (USD)', color: '#fff', font: { size: 14 } },
@@ -538,7 +539,7 @@ btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)
     // Initialize range slider
     initializeSlider(
       new Date(Math.min(...originalPriceData.map(d => d.x))),
-      new Date(new Date().setDate(new Date().getDate() + 80))
+      new Date(new Date().setDate(new Date().getDate() + 60))
     );
 
   } catch (e) {
