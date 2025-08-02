@@ -480,14 +480,16 @@ btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)
             title: { display: true, text: 'Price (USD)', color: '#fff', font: { size: 14 } },
             grid: { color: '#444' },
             ticks: { color: '#fff', callback: v => v.toLocaleString() },
-            suggestedMax: 150000 
+            suggestedMax: 150000,
+            suggestedMin: 0
           },
           y1: {
             position: 'right',
             title: { display: true, text: 'Cumulative Gain (USD)', color: '#fff', font: { size: 14 } },
             grid: { drawOnChartArea: false },
             ticks: { color: '#fff', callback: v => v.toLocaleString() },
-            suggestedMax: y1Max
+            suggestedMax: y1Max,
+            suggestedMin: 0
           }
         },
         plugins: {
@@ -538,7 +540,7 @@ btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)
 
     // Initialize range slider
     initializeSlider(
-      new Date(Math.min(...originalPriceData.map(d => d.x))),
+      new Date('2022-01-01'),
       new Date(new Date().setDate(new Date().getDate() + 60))
     );
 
