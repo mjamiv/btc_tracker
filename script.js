@@ -478,7 +478,7 @@ btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)
           y: {
             title: { display: true, text: 'Price (USD)', color: '#fff', font: { size: 14 } },
             grid: { color: '#444' },
-            ticks: { color: '#fff', callback: v => v.toLocaleString() }
+            ticks: { color: '#fff', callback: v => v.toLocaleString() },
             suggestedMax: 150000 
           },
           y1: {
