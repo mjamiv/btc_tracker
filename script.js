@@ -5,52 +5,51 @@
 
 // Dependencies (include before this script in your HTML):
 // <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-// <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.5.1/dist/chartjs-plugin-annotation.min.js"></script>
+// <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 // <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-// <script src="https://cdn.jsdelivr.net/npm/nouislider@15.5.0/distribute/nouislider.min.js"></script>
+// <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
 
 // Define key dates for vertical lines (modify as needed)
 const keyEvents = [
-   {
-    date: '2024-04-20',        // ISO date string
-    label: '4th Halving',          // text to show
-    // OPTIONAL custom styling per line:
-    borderColor:  '#FFFFFF',   // override default
+  {
+    date: '2024-04-20',
+    label: '4th Halving',
+    borderColor:  '#FFFFFF',
     borderWidth: 3,
-    labelOptions: {            // override the label block
-      rotation:  270,           // rotate text
-      position: 'end',       // top of chart
-      color:     '#F7931A',
+    labelOptions: {
+      rotation: 270,
+      position: 'end',
+      color: '#F7931A',
       backgroundColor: '#FFFFFF',
-      font:      { size: 12 }
+      font: { size: 12 }
     }
-   },
-   {
+  },
+  {
     date: '2024-01-04',
     label: 'US ETF Launch',
     borderColor: '#FFFFFF',
     borderWidth: 3,
     labelOptions: {
-      rotation:   270,         
-      position:   'end',
-      color:      '#0052FE',
+      rotation: 270,
+      position: 'end',
+      color: '#0052FE',
       backgroundColor: '#FFFFFF',
-      font:       { size: 12 }
+      font: { size: 12 }
     }
-   },
-   {
+  },
+  {
     date: '2024-11-05',
     label: 'US Pres. Election',
     borderColor: '#FFFFFF',
     borderWidth: 3,
     labelOptions: {
-      rotation:   270,         
-      position:   'end',
-      color:      '#FF0000',
+      rotation: 270,
+      position: 'end',
+      color: '#FF0000',
       backgroundColor: '#FFFFFF',
-      font:       { size: 12 }
+      font: { size: 12 }
     }
-   },
+  }
 ];
 
 let priceChart = null;
@@ -64,7 +63,9 @@ async function fetchCSV(url) {
   const res = await fetch(url + '?cache=' + Date.now());
   if (!res.ok) throw new Error(`Failed to load ${url}`);
   const text = await res.text();
-  return new Promise(resolve => Papa.parse(text, { header: true, complete: r => resolve(r.data) }));
+  return new Promise(resolve =>
+    Papa.parse(text, { header: true, complete: r => resolve(r.data) })
+  );
 }
 
 /* ───────────────────────────── BTC metrics */
@@ -114,8 +115,7 @@ function buildCostBasisTimeline(purchases) {
   const sorted = [...purchases].sort(
     (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
   );
-  let btc = 0,
-    cost = 0;
+  let btc = 0, cost = 0;
   return sorted.map(p => {
     btc += p.quantity;
     cost += p.totalCost;
@@ -135,9 +135,7 @@ function buildGainSeries(costTimeline, hist) {
       const last =
         costTimeline.filter(t => t.timestamp <= ts).slice(-1)[0] ||
         { costBasis: 0, totalBtc: 0 };
-      const gain = last.totalBtc
-        ? (price - last.costBasis) * last.totalBtc
-        : 0;
+      const gain = last.totalBtc ? (price - last.costBasis) * last.totalBtc : 0;
       return { x: ts, y: gain };
     })
     .filter(p => !isNaN(p.x) && !isNaN(p.y));
@@ -159,39 +157,28 @@ function filterDataByDateRange(s, e) {
   );
   const coinbitsData = within(
     originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbits')
-  ); 
+  );
   const gainData = within(originalGainData);
 
   priceChart.data.datasets[0].data = priceData;
   priceChart.data.datasets[1].data = cbData;
+
   priceChart.data.datasets[2].data = coinbaseData;
-  priceChart.data.datasets[2].pointRadius = coinbaseData.map(
-    p => p.radius
-  );
-  priceChart.data.datasets[2].pointHoverRadius = coinbaseData.map(
-    p => p.hoverRadius
-  );
+  priceChart.data.datasets[2].pointRadius = coinbaseData.map(p => p.radius);
+  priceChart.data.datasets[2].pointHoverRadius = coinbaseData.map(p => p.hoverRadius);
+
   priceChart.data.datasets[3].data = geminiData;
-  priceChart.data.datasets[3].pointRadius = geminiData.map(
-    p => p.radius
-  );
-  priceChart.data.datasets[3].pointHoverRadius = geminiData.map(
-    p => p.hoverRadius
-  );
+  priceChart.data.datasets[3].pointRadius = geminiData.map(p => p.radius);
+  priceChart.data.datasets[3].pointHoverRadius = geminiData.map(p => p.hoverRadius);
+
   priceChart.data.datasets[4].data = venmoData;
-  priceChart.data.datasets[4].pointRadius = venmoData.map(
-    p => p.radius
-  );
-  priceChart.data.datasets[4].pointHoverRadius = venmoData.map(
-    p => p.hoverRadius
-  );
+  priceChart.data.datasets[4].pointRadius = venmoData.map(p => p.radius);
+  priceChart.data.datasets[4].pointHoverRadius = venmoData.map(p => p.hoverRadius);
+
   priceChart.data.datasets[5].data = coinbitsData;
-  priceChart.data.datasets[5].pointRadius = coinbitsData.map(
-     p => p.radius
-  );
-  priceChart.data.datasets[5].pointHoverRadius = coinbitsData.map(
-     p => p.hoverRadius
-  );
+  priceChart.data.datasets[5].pointRadius = coinbitsData.map(p => p.radius);
+  priceChart.data.datasets[5].pointHoverRadius = coinbitsData.map(p => p.hoverRadius);
+
   priceChart.data.datasets[6].data = gainData;
 
   priceChart.update();
@@ -201,8 +188,7 @@ function filterDataByDateRange(s, e) {
 function initializeSlider(minDate, maxDate) {
   const slider = document.getElementById('date-range-slider');
   const labels = document.getElementById('date-range-labels');
-  let tries = 0,
-    maxRetries = 10;
+  let tries = 0, maxRetries = 10;
   (function tryInit() {
     if (typeof noUiSlider !== 'undefined') {
       noUiSlider.create(slider, {
@@ -214,10 +200,14 @@ function initializeSlider(minDate, maxDate) {
       });
       slider.noUiSlider.on('update', v => {
         const [s, e] = v.map(n => new Date(+n));
-        labels.innerHTML = `<span>${s.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span><span>${e.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>`;
+        labels.innerHTML =
+          `<span>${s.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>` +
+          `<span>${e.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>`;
         filterDataByDateRange(s, e);
       });
-      labels.innerHTML = `<span>${minDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span><span>${maxDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>`;
+      labels.innerHTML =
+        `<span>${minDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>` +
+        `<span>${maxDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>`;
     } else if (++tries <= maxRetries) {
       setTimeout(tryInit, 500);
     } else {
@@ -232,12 +222,8 @@ async function updateTracker() {
   try {
     // Load CSVs
     const [transactions, historic] = await Promise.all([
-      fetchCSV(
-        'https://raw.githubusercontent.com/mjamiv/btc_tracker/main/transactions.csv'
-      ),
-      fetchCSV(
-        'https://raw.githubusercontent.com/mjamiv/btc_tracker/main/historical_btc_prices.csv'
-      )
+      fetchCSV('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/transactions.csv'),
+      fetchCSV('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/historical_btc_prices.csv')
     ]);
 
     // Metrics
@@ -270,21 +256,42 @@ async function updateTracker() {
     const gainLoss = currentVal - invested;
     const gainPct = invested ? (gainLoss / invested) * 100 : 0;
 
+    // ── Split tile: "To 1 BTC"
+    const btcRemaining = Math.max(1 - totalBtc, 0);
+    const costToOne = btcRemaining * currentPrice;
+
     // DOM update
     const $ = id => document.getElementById(id);
+
+    // Split tile values
+    $('btc-to-one').innerText = btcRemaining.toFixed(8) + ' BTC';
+    $('usd-to-one').innerText = costToOne.toLocaleString('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    });
+
+    // Summary tiles
     $('total-btc').innerText = totalBtc.toFixed(8);
     $('invested').innerText = invested.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     $('cost-basis').innerText = costBasis.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     $('current-value').innerText = currentVal.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-    $('gain-loss').innerHTML = `<span class="${gainLoss >= 0 ? 'positive' : 'negative'}">${
-gainLoss >= 0 ? '+' : ''}${gainLoss.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} <span class="percentage">(${gainPct.toFixed(2)}%)</span></span>`;
+    $('gain-loss').innerHTML =
+      `<span class="${gainLoss >= 0 ? 'positive' : 'negative'}">` +
+        `${gainLoss >= 0 ? '+' : ''}` +
+        `${gainLoss.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} ` +
+        `<span class="percentage">(${gainPct.toFixed(2)}%)</span>` +
+      `</span>`;
 
+    // BTC market tiles
     $('btc-price').innerText = currentPrice.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     $('btc-market-cap').innerText = btcMetrics.marketCap.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     $('btc-volume').innerText = btcMetrics.volume24h.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-    $('btc-price-change').innerHTML = `<span class="${btcMetrics.priceChange24h >= 0 ? 'positive' : 'negative'}">${
-btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)}%</span>`;
+    $('btc-price-change').innerHTML =
+      `<span class="${btcMetrics.priceChange24h >= 0 ? 'positive' : 'negative'}">` +
+        `${btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)}%` +
+      `</span>`;
 
+    // Chain tiles
     $('btc-block-height').innerText = blockchainMetrics.blockHeight.toLocaleString();
     $('btc-difficulty').innerText = (blockchainMetrics.difficulty / 1e12).toFixed(2) + ' T';
     $('btc-hash-rate').innerText = blockchainMetrics.hashRate.toFixed(2) + ' EH/s';
@@ -298,30 +305,30 @@ btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
         .forEach(p => {
           const tr = document.createElement('tr');
-          tr.innerHTML = `<td>${new Date(p.timestamp).toLocaleDateString()}</td>
-<td>${p.quantity.toFixed(8)}</td>
-<td>${p.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
-<td>${p.priceAtTransaction.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
-<td>${p.exchange}</td>`;
+          tr.innerHTML =
+            `<td>${new Date(p.timestamp).toLocaleDateString()}</td>` +
+            `<td>${p.quantity.toFixed(8)}</td>` +
+            `<td>${p.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>` +
+            `<td>${p.priceAtTransaction.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>` +
+            `<td>${p.exchange}</td>`;
           tableBody.appendChild(tr);
         });
     }
 
     // Build data arrays
-    originalPriceData = historic.map(r => {
-      const ts = new Date(r.Date);
-      const y = +((r.Price || '').replace(/[^0-9.]/g, ''));
-      return { x: ts, y };
-    }).filter(pt => !isNaN(pt.x) && !isNaN(pt.y));
+    originalPriceData = historic
+      .map(r => {
+        const ts = new Date(r.Date);
+        const y = +((r.Price || '').replace(/[^0-9.]/g, ''));
+        return { x: ts, y };
+      })
+      .filter(pt => !isNaN(pt.x) && !isNaN(pt.y));
 
-    const maxQty = Math.max(...purchases.map(p => p.quantity));
+    const maxQty = Math.max(...purchases.map(p => p.quantity), 0);
     originalPurchaseData = purchases.map(p => {
       const ts = new Date(p.timestamp);
-      const frac = maxQty
-        ? Math.log1p(p.quantity / maxQty) / Math.log1p(1)
-        : 0;
-      const	rMin = 4,
-        rMax = 20;
+      const frac = maxQty ? Math.log1p(p.quantity / maxQty) / Math.log1p(1) : 0;
+      const rMin = 4, rMax = 20;
       return {
         x: ts,
         y: p.priceAtTransaction,
@@ -335,136 +342,111 @@ btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)
 
     const costTimeline = buildCostBasisTimeline(purchases);
     originalCostBasisData = originalPriceData.map(pt => {
-      const last = costTimeline
-        .filter(t => t.timestamp <= pt.x)
-        .slice(-1)[0] || { costBasis: 0 };
+      const last = costTimeline.filter(t => t.timestamp <= pt.x).slice(-1)[0] || { costBasis: 0 };
       return { x: pt.x, y: last.costBasis };
     });
 
     originalGainData = buildGainSeries(costTimeline, historic);
-
-    const y1Max = Math.max(...originalGainData.map(d => d.y)) * 1.5;
+    const y1Max = Math.max(0, ...originalGainData.map(d => d.y)) * 1.5 || 1;
 
     // Create / refresh chart
     if (priceChart) priceChart.destroy();
     const ctx = document.getElementById('priceChart').getContext('2d');
     priceChart = new Chart(ctx, {
       type: 'line',
-      data: { datasets: [
-        /* 0: BTC Price */
-        {
-          label: 'BTC Price (USD)',
-          data: originalPriceData,
-          borderColor: '#fff',
-          backgroundColor: 'rgba(255,255,255,0.03)',
-          fill: false,
-          tension: 0.3,
-          pointRadius: 0,
-          yAxisID: 'y',
-          order: 1
-        },
-        /* 1: Cost Basis */
-        {
-          label: 'Cost Basis (USD)',
-          data: originalCostBasisData,
-          borderColor: '#FFA500',
-          backgroundColor: 'rgba(255,165,0,0.08)',
-          borderDash: [6, 4],
-          fill: false,
-          tension: 0,
-          pointRadius: 0,
-          yAxisID: 'y',
-          order: 1
-        },
-        /* 2: Coinbase Purchases */
-        {
-          label: 'Coinbase Purchases',
-          type: 'scatter',
-          data: originalPurchaseData.filter(
-            p => p.exchange.toLowerCase() === 'coinbase'
-          ),
-          backgroundColor: '#1E90FF',
-          borderColor: '#000',
-          borderWidth: 1,
-          pointRadius: originalPurchaseData.filter(
-            p => p.exchange.toLowerCase() === 'coinbase'
-          ).map(p => p.radius),
-          pointHoverRadius: originalPurchaseData.filter(
-            p => p.exchange.toLowerCase() === 'coinbase'
-          ).map(p => p.hoverRadius),
-          yAxisID: 'y',
-          order: 0
-        },
-        /* 3: Gemini Purchases */
-        {
-          label: 'Gemini Purchases',
-          type: 'scatter',
-          data: originalPurchaseData.filter(
-            p => p.exchange.toLowerCase() === 'gemini'
-          ),
-          backgroundColor: '#800080',
-          borderColor: '#000',
-          borderWidth: 1,
-          pointRadius: originalPurchaseData.filter(
-            p => p.exchange.toLowerCase() === 'gemini'
-          ).map(p => p.radius),
-          pointHoverRadius: originalPurchaseData.filter(
-            p => p.exchange.toLowerCase() === 'gemini'
-          ).map(p => p.hoverRadius),
-          yAxisID: 'y',
-          order: 0
-        },
-        /* 4: Venmo Purchases */
-        {
-          label: 'Venmo Purchases',
-          type: 'scatter',
-          data: originalPurchaseData.filter(
-            p => p.exchange.toLowerCase() === 'venmo'
-          ),
-          backgroundColor: '#00FF00',
-          borderColor: '#000',
-          borderWidth: 1,
-          pointRadius: originalPurchaseData.filter(
-            p => p.exchange.toLowerCase() === 'venmo'
-          ).map(p => p.radius),
-          pointHoverRadius: originalPurchaseData.filter(
-            p => p.exchange.toLowerCase() === 'venmo'
-          ).map(p => p.hoverRadius),
-          yAxisID: 'y',
-          order: 0
-        },
-        /* 5: Coinbits Purchases */
-        {
-          label: 'Coinbits Purchases',
-          type:  'scatter',
-          data:  originalPurchaseData.filter(
-            p => p.exchange.toLowerCase() === 'coinbits'
-          ),
-          backgroundColor: '#FFD700',  // gold-ish
-          borderColor:     '#000',
-          borderWidth:     1,
-          pointRadius: originalPurchaseData.filter(
-             p => p.exchange.toLowerCase() === 'coinbits'
-          ).map(p => p.radius),
-          pointHoverRadius: originalPurchaseData.filter(
-             p => p.exchange.toLowerCase() === 'coinbits'
-          ).map(p => p.hoverRadius),
-          yAxisID: 'y',
-          order:   0
-         },         
-        /* 6: Cumulative Gain */
-        {
-          label: 'Cumulative Gain (USD)',
-          data: originalGainData,
-          borderColor: '#39FF14',
-          backgroundColor: 'rgba(57,255,20,0.1)',
-          fill: false,
-          tension: 0.3,
-          pointRadius: 0,
-          yAxisID: 'y1',
-          order: 2
-        }
-      ] },
+      data: {
+        datasets: [
+          /* 0: BTC Price */
+          {
+            label: 'BTC Price (USD)',
+            data: originalPriceData,
+            borderColor: '#fff',
+            backgroundColor: 'rgba(255,255,255,0.03)',
+            fill: false,
+            tension: 0.3,
+            pointRadius: 0,
+            yAxisID: 'y',
+            order: 1
+          },
+          /* 1: Cost Basis */
+          {
+            label: 'Cost Basis (USD)',
+            data: originalCostBasisData,
+            borderColor: '#FFA500',
+            backgroundColor: 'rgba(255,165,0,0.08)',
+            borderDash: [6, 4],
+            fill: false,
+            tension: 0,
+            pointRadius: 0,
+            yAxisID: 'y',
+            order: 1
+          },
+          /* 2: Coinbase Purchases */
+          {
+            label: 'Coinbase Purchases',
+            type: 'scatter',
+            data: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbase'),
+            backgroundColor: '#1E90FF',
+            borderColor: '#000',
+            borderWidth: 1,
+            pointRadius: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbase').map(p => p.radius),
+            pointHoverRadius: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbase').map(p => p.hoverRadius),
+            yAxisID: 'y',
+            order: 0
+          },
+          /* 3: Gemini Purchases */
+          {
+            label: 'Gemini Purchases',
+            type: 'scatter',
+            data: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'gemini'),
+            backgroundColor: '#800080',
+            borderColor: '#000',
+            borderWidth: 1,
+            pointRadius: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'gemini').map(p => p.radius),
+            pointHoverRadius: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'gemini').map(p => p.hoverRadius),
+            yAxisID: 'y',
+            order: 0
+          },
+          /* 4: Venmo Purchases */
+          {
+            label: 'Venmo Purchases',
+            type: 'scatter',
+            data: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'venmo'),
+            backgroundColor: '#00FF00',
+            borderColor: '#000',
+            borderWidth: 1,
+            pointRadius: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'venmo').map(p => p.radius),
+            pointHoverRadius: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'venmo').map(p => p.hoverRadius),
+            yAxisID: 'y',
+            order: 0
+          },
+          /* 5: Coinbits Purchases */
+          {
+            label: 'Coinbits Purchases',
+            type: 'scatter',
+            data: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbits'),
+            backgroundColor: '#FFD700',
+            borderColor: '#000',
+            borderWidth: 1,
+            pointRadius: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbits').map(p => p.radius),
+            pointHoverRadius: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbits').map(p => p.hoverRadius),
+            yAxisID: 'y',
+            order: 0
+          },
+          /* 6: Cumulative Gain */
+          {
+            label: 'Cumulative Gain (USD)',
+            data: originalGainData,
+            borderColor: '#39FF14',
+            backgroundColor: 'rgba(57,255,20,0.1)',
+            fill: false,
+            tension: 0.3,
+            pointRadius: 0,
+            yAxisID: 'y1',
+            order: 2
+          }
+        ]
+      },
       options: {
         responsive: true,
         scales: {
@@ -474,7 +456,7 @@ btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)
             title: { display: true, text: 'Date', color: '#fff', font: { size: 14 } },
             grid: { color: '#444' },
             ticks: { color: '#fff' },
-            Min: '2022-01-01'
+            min: '2022-01-01'
           },
           y: {
             title: { display: true, text: 'Price (USD)', color: '#fff', font: { size: 14 } },
@@ -511,30 +493,30 @@ btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)
               }
             }
           },
-            annotation: {
-              annotations: keyEvents.reduce((map, ev, i) => {
-                map['event'+i] = {
-                  type:       'line',
-                  xScaleID:   'x',
-                  xMin:       ev.date,
-                  xMax:       ev.date,
-                  borderColor:  ev.borderColor  || '#FF4500',
-                  borderWidth:  ev.borderWidth  || 2,
-                  borderDash:   ev.borderDash   || [],
-                  label: {
-                    display: true,
-                    content: ev.label,
-                    position: ev.labelOptions?.position || 'start',
-                    rotation: ev.labelOptions?.rotation || 90,
-                    color: ev.labelOptions?.color || '#fff',
-                    backgroundColor: ev.labelOptions?.backgroundColor || '#FFFFFF',
-                    font: ev.labelOptions?.font || { size: 12 }
-                  }
-                };
-                return map;
-              }, {})
-            }
-         }
+          annotation: {
+            annotations: keyEvents.reduce((map, ev, i) => {
+              map['event' + i] = {
+                type: 'line',
+                xScaleID: 'x',
+                xMin: ev.date,
+                xMax: ev.date,
+                borderColor: ev.borderColor || '#FF4500',
+                borderWidth: ev.borderWidth || 2,
+                borderDash: ev.borderDash || [],
+                label: {
+                  display: true,
+                  content: ev.label,
+                  position: ev.labelOptions?.position || 'start',
+                  rotation: ev.labelOptions?.rotation || 90,
+                  color: ev.labelOptions?.color || '#fff',
+                  backgroundColor: ev.labelOptions?.backgroundColor || '#FFFFFF',
+                  font: ev.labelOptions?.font || { size: 12 }
+                }
+              };
+              return map;
+            }, {})
+          }
+        }
       }
     });
 
