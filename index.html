@@ -19,51 +19,101 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 
   <!-- noUiSlider for date‐range slider -->
-  <link  href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css"
-         rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css" rel="stylesheet"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
 
   <!-- Font Awesome for icons -->
-  <link  rel="stylesheet"
-         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
 
   <style>
-    body { font-family: 'Arial', sans-serif; background-color: #1a1a1a; color: #fff; margin:0; padding:20px; }
+    :root {
+      --bg: #1a1a1a;
+      --panel: #2c2c2c;
+      --panel2: #3a3a3a;
+      --gold: #ffd700;
+      --text: #fff;
+      --muted: #888;
+      --border: #ffd700;
+      --shadow: rgba(0,0,0,0.5);
+    }
+    body { font-family: Arial, Helvetica, sans-serif; background-color: var(--bg); color: var(--text); margin:0; padding:20px; }
     .container { max-width:1200px; margin:0 auto; }
     .title-image { display:block; margin:0 auto 20px; width:500px; height:auto; }
+
+    /* Split Tile at the very top */
+    .split-tile {
+      display:flex;
+      align-items:stretch;
+      gap:0;
+      background: linear-gradient(135deg, #2c2c2c, #242424);
+      border: 2px solid var(--border);
+      border-radius:14px;
+      margin-bottom:20px;
+      overflow:hidden;
+      box-shadow: 0 10px 18px var(--shadow);
+    }
+    .split-half {
+      flex:1;
+      padding:18px 20px;
+      display:flex;
+      align-items:center;
+      gap:14px;
+    }
+    .split-half .icon {
+      font-size:1.6rem;
+      color: var(--gold);
+      width:32px; text-align:center;
+    }
+    .split-half .meta { display:flex; flex-direction:column; }
+    .split-half .label {
+      color: var(--muted);
+      font-size:.85rem;
+      letter-spacing:.5px;
+      text-transform:uppercase;
+    }
+    .split-half .value {
+      font-weight:700;
+      font-size:1.35rem;
+      margin-top:4px;
+    }
+    .split-divider {
+      width:1px;
+      background: linear-gradient(180deg, transparent, rgba(255,215,0,0.6), transparent);
+    }
+
     .stats, .btc-metrics, .blockchain-metrics {
       display:grid; gap:15px; background:linear-gradient(135deg,#2c2c2c,#242424);
-      padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 6px 12px rgba(0,0,0,0.5);
-      border:1px solid #ffd700;
+      padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 6px 12px var(--shadow);
+      border:1px solid var(--gold);
     }
     .stats { grid-template-columns:repeat(5,1fr); }
     .btc-metrics { grid-template-columns:repeat(4,1fr); }
     .blockchain-metrics { grid-template-columns:repeat(4,1fr); }
     .stat-box {
       background:linear-gradient(135deg,#3a3a3a,#2c2c2c);
-      border:2px solid #ffd700; border-radius:8px; padding:15px;
+      border:2px solid var(--gold); border-radius:8px; padding:15px;
       text-align:center; position:relative; transition:.2s;
       animation:fadeIn .5s ease-in-out;
     }
     .stat-box:hover { transform:translateY(-5px); box-shadow:0 8px 16px rgba(255,215,0,0.3); }
-    .stat-box .icon { font-size:1.5em; color:#ffd700; margin-bottom:5px; }
+    .stat-box .icon { font-size:1.5em; color:var(--gold); margin-bottom:5px; }
     .stat-box .label { color:#888; font-size:.9em; text-transform:uppercase; letter-spacing:1px; }
     .stat-box .value { margin:5px 0; font-size:1.2em; font-weight:bold; }
     .positive { color:#0f0; }
     .negative { color:#f00; }
 
     .table-container, .chart-container {
-      background:#2c2c2c; padding:20px; border-radius:10px;
+      background:var(--panel); padding:20px; border-radius:10px;
       margin-bottom:20px; box-shadow:0 4px 8px rgba(0,0,0,0.3);
     }
     table { width:100%; border-collapse:collapse; }
     th, td { padding:10px; text-align:left; border-bottom:1px solid #444; }
-    th { background:#3a3a3a; color:#ffd700; }
+    th { background:var(--panel2); color:var(--gold); }
     td { color:#ccc; }
 
     canvas { max-width:100%; }
     button {
-      background:#ffd700; color:#1a1a1a; border:none;
+      background:var(--gold); color:var(--bg); border:none;
       padding:10px 20px; font-size:1em; cursor:pointer; border-radius:5px;
       display:block; margin:20px auto;
     }
@@ -74,7 +124,12 @@
       from { opacity:0; transform:translateY(10px); }
       to   { opacity:1; transform:translateY(0); }
     }
-    @media (max-width:768px) { .stats, .btc-metrics, .blockchain-metrics { grid-template-columns:repeat(2,1fr);} }
+    @media (max-width:1024px) { .stats { grid-template-columns:repeat(3,1fr);} }
+    @media (max-width:768px) {
+      .stats, .btc-metrics, .blockchain-metrics { grid-template-columns:repeat(2,1fr);}
+      .split-tile { flex-direction:column; }
+      .split-divider { height:1px; width:100%; }
+    }
     @media (max-width:480px) { .stats, .btc-metrics, .blockchain-metrics { grid-template-columns:1fr;} }
   </style>
 </head>
@@ -82,6 +137,26 @@
 <body>
   <div class="container">
     <img src="btc_tracker.png" alt="mjamiv btc tracker" class="title-image"/>
+
+    <!-- NEW: Split Tile (top of page) -->
+    <div class="split-tile" id="to-one-tile" title="Progress to 1 BTC at current market price">
+      <div class="split-half">
+        <div class="icon"><i class="fa-solid fa-circle-half-stroke"></i></div>
+        <div class="meta">
+          <div class="label">BTC Remaining to 1.00000000</div>
+          <div class="value" id="btc-to-one">—</div>
+        </div>
+      </div>
+      <div class="split-divider"></div>
+      <div class="split-half">
+        <div class="icon"><i class="fa-solid fa-dollar-sign"></i></div>
+        <div class="meta">
+          <div class="label">USD Needed @ Current Price</div>
+          <div class="value" id="usd-to-one">—</div>
+        </div>
+      </div>
+    </div>
+    <!-- End Split Tile -->
 
     <div class="stats" id="summary">
       <!-- Total BTC -->
@@ -197,7 +272,7 @@
     <button onclick="updateTracker()">Refresh</button>
   </div>
 
-  <!-- Your JS with annotations, slider, CSV fetch, etc. -->
+  <!-- App script -->
   <script src="script.js"></script>
 </body>
 </html>
