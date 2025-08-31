@@ -521,10 +521,10 @@ async function updateTracker() {
     });
 
     // Initialize range slider
-    initializeSlider(
-      new Date('2022-01-01'),
-      new Date(new Date().setDate(new Date().getDate() + 60))
-    );
+    //initializeSlider(
+      //new Date('2022-01-01'),
+     // new Date(new Date().setDate(new Date().getDate() + 60))
+    //);
 
   } catch (e) {
     console.error(e);
