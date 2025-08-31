@@ -1,261 +1,284 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>mjamiv btc</title>
+  <title>BTC Tracker — Portfolio Dashboard</title>
+  <meta name="theme-color" content="#1a1a1a"/>
 
-  <!-- CSV parsing -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
 
-  <!-- Chart.js core -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <!-- Date adapter & date-fns for time scales -->
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/date-fns/2.30.0/date_fns.min.js"></script>
-
-  <!-- Annotation plugin (must come after Chart.js) -->
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
-
-  <!-- noUiSlider for date‐range slider -->
+  <!-- noUiSlider -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css" rel="stylesheet"/>
+
+  <!-- Chart.js + date adapter + annotation -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3"></script>
+
+  <!-- PapaParse & noUiSlider -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
 
-  <!-- Font Awesome for icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
-
   <style>
-    :root {
-      --bg: #1a1a1a;
-      --panel: #2c2c2c;
-      --panel2: #3a3a3a;
-      --gold: #ffd700;
-      --text: #fff;
-      --muted: #888;
-      --border: #ffd700;
-      --shadow: rgba(0,0,0,0.5);
-    }
-    body { font-family: Arial, Helvetica, sans-serif; background-color: var(--bg); color: var(--text); margin:0; padding:20px; }
-    .container { max-width:1200px; margin:0 auto; }
-    .title-image { display:block; margin:0 auto 20px; width:500px; height:auto; }
-
-    /* Split Tile at the very top */
-    .split-tile {
-      display:flex;
-      align-items:stretch;
-      gap:0;
-      background: linear-gradient(135deg, #2c2c2c, #242424);
-      border: 2px solid var(--border);
-      border-radius:14px;
-      margin-bottom:20px;
-      overflow:hidden;
-      box-shadow: 0 10px 18px var(--shadow);
-    }
-    .split-half {
-      flex:1;
-      padding:18px 20px;
-      display:flex;
-      align-items:center;
-      gap:14px;
-    }
-    .split-half .icon {
-      font-size:1.6rem;
-      color: var(--gold);
-      width:32px; text-align:center;
-    }
-    .split-half .meta { display:flex; flex-direction:column; }
-    .split-half .label {
-      color: var(--muted);
-      font-size:.85rem;
-      letter-spacing:.5px;
-      text-transform:uppercase;
-    }
-    .split-half .value {
-      font-weight:700;
-      font-size:1.35rem;
-      margin-top:4px;
-    }
-    .split-divider {
-      width:1px;
-      background: linear-gradient(180deg, transparent, rgba(255,215,0,0.6), transparent);
+    :root{
+      --bg:#0f1115;
+      --bg2:#141822;
+      --panel:#171b26;
+      --panel2:#222837;
+      --text:#e8eefc;
+      --muted:#9aa3b2;
+      --gold:#ffd166;
+      --accent:#27e1a9;
+      --danger:#ff6b6b;
+      --shadow:0 14px 28px rgba(0,0,0,.45);
+      --ring: 0 0 0 1px rgba(255,209,102,.35), 0 10px 30px rgba(255,209,102,.08);
     }
 
-    .stats, .btc-metrics, .blockchain-metrics {
-      display:grid; gap:15px; background:linear-gradient(135deg,#2c2c2c,#242424);
-      padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 6px 12px var(--shadow);
-      border:1px solid var(--gold);
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; color:var(--text); background:
+        radial-gradient(1200px 800px at 10% -10%, #1b1f2b 10%, transparent 60%),
+        radial-gradient(1000px 600px at 110% 10%, #1a2030 10%, transparent 60%),
+        linear-gradient(180deg, #0b0d12, #0f1115 40%, #0f1115);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height:1.4;
     }
-    .stats { grid-template-columns:repeat(5,1fr); }
-    .btc-metrics { grid-template-columns:repeat(4,1fr); }
-    .blockchain-metrics { grid-template-columns:repeat(4,1fr); }
-    .stat-box {
-      background:linear-gradient(135deg,#3a3a3a,#2c2c2c);
-      border:2px solid var(--gold); border-radius:8px; padding:15px;
-      text-align:center; position:relative; transition:.2s;
-      animation:fadeIn .5s ease-in-out;
-    }
-    .stat-box:hover { transform:translateY(-5px); box-shadow:0 8px 16px rgba(255,215,0,0.3); }
-    .stat-box .icon { font-size:1.5em; color:var(--gold); margin-bottom:5px; }
-    .stat-box .label { color:#888; font-size:.9em; text-transform:uppercase; letter-spacing:1px; }
-    .stat-box .value { margin:5px 0; font-size:1.2em; font-weight:bold; }
-    .positive { color:#0f0; }
-    .negative { color:#f00; }
 
-    .table-container, .chart-container {
-      background:var(--panel); padding:20px; border-radius:10px;
-      margin-bottom:20px; box-shadow:0 4px 8px rgba(0,0,0,0.3);
-    }
-    table { width:100%; border-collapse:collapse; }
-    th, td { padding:10px; text-align:left; border-bottom:1px solid #444; }
-    th { background:var(--panel2); color:var(--gold); }
-    td { color:#ccc; }
+    .container{max-width:1200px;margin:0 auto;padding:28px 20px 40px}
 
-    canvas { max-width:100%; }
-    button {
-      background:var(--gold); color:var(--bg); border:none;
-      padding:10px 20px; font-size:1em; cursor:pointer; border-radius:5px;
-      display:block; margin:20px auto;
+    /* Header */
+    .header{
+      display:flex; align-items:center; justify-content:space-between; gap:16px;
+      margin-bottom:18px;
     }
-    button:hover { background:#e6c200; }
-    .error { color:#f00; text-align:center; margin:10px 0; }
+    .brand{
+      display:flex; align-items:center; gap:12px;
+    }
+    .brand img{width:44px;height:44px;border-radius:10px; box-shadow: var(--ring)}
+    .brand h1{
+      margin:0; font-size:1.25rem; font-weight:800; letter-spacing:.4px;
+      display:flex; align-items:center; gap:10px;
+    }
+    .brand .sub{font-weight:400; color:var(--muted); font-size:.9rem}
+    .controls{display:flex; align-items:center; gap:10px}
+    .btn{
+      border:none; background:linear-gradient(180deg,#ffd166,#ffc24d);
+      color:#1a1a1a; padding:10px 14px; border-radius:10px; font-weight:700; cursor:pointer;
+      box-shadow: 0 8px 24px rgba(255,209,102,.25);
+      transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+    }
+    .btn:hover{transform:translateY(-1px); filter:brightness(1.02)}
+    .btn:active{transform:translateY(0); filter:brightness(.98)}
+    .last-updated{color:var(--muted); font-size:.85rem}
 
-    @keyframes fadeIn {
-      from { opacity:0; transform:translateY(10px); }
-      to   { opacity:1; transform:translateY(0); }
+    /* Split tile */
+    .split-tile{
+      display:flex; align-items:stretch; overflow:hidden; border-radius:16px; margin:18px 0 22px;
+      background: linear-gradient(145deg, #161a24, #121620);
+      border:1px solid rgba(255,209,102,.35);
+      box-shadow: var(--shadow);
     }
-    @media (max-width:1024px) { .stats { grid-template-columns:repeat(3,1fr);} }
-    @media (max-width:768px) {
-      .stats, .btc-metrics, .blockchain-metrics { grid-template-columns:repeat(2,1fr);}
-      .split-tile { flex-direction:column; }
-      .split-divider { height:1px; width:100%; }
+    .split-half{
+      flex:1; display:flex; align-items:center; gap:14px; padding:16px 18px;
+      background:
+        radial-gradient(200px 120px at 15% 10%, rgba(255,209,102,.08), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,.02), transparent);
     }
-    @media (max-width:480px) { .stats, .btc-metrics, .blockchain-metrics { grid-template-columns:1fr;} }
+    .split-divider{width:1px;background:linear-gradient(180deg,transparent,rgba(255,209,102,.55),transparent)}
+    .split-half .icon{font-size:1.4rem; color:var(--gold); width:30px; text-align:center}
+    .split-half .label{color:var(--muted); font-size:.8rem; letter-spacing:.5px; text-transform:uppercase}
+    .split-half .value{font-weight:800; font-size:1.35rem; letter-spacing:.2px}
+
+    /* Stat grids */
+    .panel{
+      background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:14px; padding:16px; box-shadow: var(--shadow); margin-bottom:18px;
+    }
+    .stats, .btc-metrics, .blockchain-metrics{
+      display:grid; gap:12px;
+    }
+    .stats{grid-template-columns:repeat(5,1fr)}
+    .btc-metrics{grid-template-columns:repeat(4,1fr)}
+    .blockchain-metrics{grid-template-columns:repeat(4,1fr)}
+
+    .stat-box{
+      background:linear-gradient(165deg, #161c2a, #131827 60%);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:12px; padding:14px;
+      transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+      position:relative; overflow:hidden;
+    }
+    .stat-box:before{
+      content:""; position:absolute; inset:-2px; border-radius:12px;
+      background: conic-gradient(from 180deg, rgba(255,209,102,.18), transparent 25%, transparent 75%, rgba(39,225,169,.18));
+      filter:blur(16px); opacity:.25; pointer-events:none;
+    }
+    .stat-box:hover{transform:translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,.35); border-color: rgba(255,209,102,.25)}
+    .stat-box .icon{color:var(--gold); font-size:1.2rem}
+    .stat-box .head{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px}
+    .stat-box .label{color:var(--muted); font-size:.8rem; letter-spacing:.4px; text-transform:uppercase}
+    .stat-box .value{font-weight:800; font-size:1.2rem}
+    .positive{color:var(--accent)}
+    .negative{color:var(--danger)}
+
+    /* Chart section */
+    .chart-container{padding:16px}
+    h2{margin:0 0 12px 2px; font-size:1.05rem; color:#cfd8ff; font-weight:700; letter-spacing:.3px}
+    #chart-error{color:var(--danger); margin:8px 0 0 2px; min-height:20px}
+    canvas{max-width:100%}
+
+    #date-range-slider{margin:18px 6px}
+    #date-range-labels{display:flex; justify-content:space-between; color:var(--muted); font-size:.9rem; padding:0 4px}
+
+    /* Table */
+    .table-container{padding:16px}
+    table{width:100%; border-collapse:collapse; overflow:hidden; border-radius:12px}
+    thead th{
+      background:linear-gradient(180deg, #20273a, #1b2132);
+      color:#f1f4ff; font-weight:700; letter-spacing:.4px; text-align:left;
+      padding:12px 10px; border-bottom:1px solid rgba(255,255,255,.04)
+    }
+    tbody td{padding:11px 10px; border-bottom:1px solid rgba(255,255,255,.06); color:#dbe3ff}
+    tbody tr:hover{background-color:#161b28}
+
+    /* Responsive */
+    @media (max-width:1100px){ .stats{grid-template-columns:repeat(3,1fr)} }
+    @media (max-width:850px){
+      .stats,.btc-metrics,.blockchain-metrics{grid-template-columns:repeat(2,1fr)}
+      .split-tile{flex-direction:column}
+      .split-divider{height:1px; width:100%}
+      .brand h1{font-size:1.1rem}
+    }
+    @media (max-width:520px){ .stats,.btc-metrics,.blockchain-metrics{grid-template-columns:1fr} }
   </style>
 </head>
-
 <body>
   <div class="container">
-    <img src="btc_tracker.png" alt="mjamiv btc tracker" class="title-image"/>
 
-    <!-- NEW: Split Tile (top of page) -->
-    <div class="split-tile" id="to-one-tile" title="Progress to 1 BTC at current market price">
+    <!-- Header -->
+    <div class="header">
+      <div class="brand">
+        <img src="btc_tracker.png" alt="BTC tracker logo" loading="eager">
+        <div>
+          <h1>BTC Tracker <span class="sub">Portfolio Dashboard</span></h1>
+          <div class="last-updated" id="last-updated" aria-live="polite"></div>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="btn" id="refresh-btn" title="Refresh metrics and chart">
+          <i class="fa-solid fa-rotate-right"></i> Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- Split Tile: progress to 1 BTC -->
+    <div class="split-tile panel" id="to-one-tile" title="Progress to 1 BTC at current market price">
       <div class="split-half">
         <div class="icon"><i class="fa-solid fa-circle-half-stroke"></i></div>
-        <div class="meta">
-          <div class="label">BTC Needed for Whole-Coiner Status</div>
+        <div>
+          <div class="label">BTC Needed for Whole-Coiner</div>
           <div class="value" id="btc-to-one">—</div>
         </div>
       </div>
       <div class="split-divider"></div>
       <div class="split-half">
         <div class="icon"><i class="fa-solid fa-dollar-sign"></i></div>
-        <div class="meta">
-          <div class="label">Price to Achieve Whole-Coiner Status</div>
+        <div>
+          <div class="label">USD to Reach 1 BTC</div>
           <div class="value" id="usd-to-one">—</div>
         </div>
       </div>
     </div>
-    <!-- End Split Tile -->
 
-    <div class="stats" id="summary">
-      <!-- Total BTC -->
-      <div class="stat-box" title="Total BTC">
-        <i class="fas fa-coins icon"></i>
-        <p class="label">Total BTC</p>
-        <p class="value" id="total-btc"></p>
-      </div>
-      <!-- Total Invested -->
-      <div class="stat-box" title="Total USD invested">
-        <i class="fas fa-dollar-sign icon"></i>
-        <p class="label">Total Invested</p>
-        <p class="value" id="invested"></p>
-      </div>
-      <!-- Cost Basis -->
-      <div class="stat-box" title="Average cost per BTC">
-        <i class="fas fa-calculator icon"></i>
-        <p class="label">Cost Basis</p>
-        <p class="value" id="cost-basis"></p>
-      </div>
-      <!-- Current Value -->
-      <div class="stat-box" title="Current USD value">
-        <i class="fas fa-wallet icon"></i>
-        <p class="label">Current Value</p>
-        <p class="value" id="current-value"></p>
-      </div>
-      <!-- Gain/Loss -->
-      <div class="stat-box" title="Unrealized gain/loss">
-        <i class="fas fa-chart-line icon"></i>
-        <p class="label">Gain/Loss</p>
-        <p class="value" id="gain-loss"></p>
+    <!-- Summary tiles -->
+    <div class="panel">
+      <div class="stats" id="summary">
+        <div class="stat-box" title="Total BTC held">
+          <div class="head"><span class="label">Total BTC</span><i class="fa-solid fa-coins icon"></i></div>
+          <div class="value" id="total-btc">—</div>
+        </div>
+        <div class="stat-box" title="Total USD invested">
+          <div class="head"><span class="label">Total Invested</span><i class="fa-solid fa-dollar-sign icon"></i></div>
+          <div class="value" id="invested">—</div>
+        </div>
+        <div class="stat-box" title="Average cost per BTC">
+          <div class="head"><span class="label">Cost Basis</span><i class="fa-solid fa-calculator icon"></i></div>
+          <div class="value" id="cost-basis">—</div>
+        </div>
+        <div class="stat-box" title="Current portfolio value">
+          <div class="head"><span class="label">Current Value</span><i class="fa-solid fa-wallet icon"></i></div>
+          <div class="value" id="current-value">—</div>
+        </div>
+        <div class="stat-box" title="Unrealized gain / loss">
+          <div class="head"><span class="label">Gain / Loss</span><i class="fa-solid fa-chart-line icon"></i></div>
+          <div class="value" id="gain-loss">—</div>
+        </div>
       </div>
     </div>
 
-    <div class="btc-metrics" id="btc-metrics">
-      <!-- Price -->
-      <div class="stat-box" title="Latest BTC price">
-        <i class="fas fa-tag icon"></i>
-        <p class="label">Current Price</p>
-        <p class="value" id="btc-price"></p>
-      </div>
-      <!-- Market Cap -->
-      <div class="stat-box" title="Market capitalization">
-        <i class="fas fa-globe icon"></i>
-        <p class="label">Market Cap</p>
-        <p class="value" id="btc-market-cap"></p>
-      </div>
-      <!-- Volume 24h -->
-      <div class="stat-box" title="Trading volume (24h)">
-        <i class="fas fa-exchange-alt icon"></i>
-        <p class="label">24h Volume</p>
-        <p class="value" id="btc-volume"></p>
-      </div>
-      <!-- Price Change 24h -->
-      <div class="stat-box" title="Price change (24h)">
-        <i class="fas fa-percentage icon"></i>
-        <p class="label">24h Price Change</p>
-        <p class="value" id="btc-price-change"></p>
+    <!-- BTC market metrics -->
+    <div class="panel">
+      <div class="btc-metrics" id="btc-metrics">
+        <div class="stat-box" title="Latest BTC price">
+          <div class="head"><span class="label">Current Price</span><i class="fa-solid fa-tag icon"></i></div>
+          <div class="value" id="btc-price">—</div>
+        </div>
+        <div class="stat-box" title="Market capitalization">
+          <div class="head"><span class="label">Market Cap</span><i class="fa-solid fa-globe icon"></i></div>
+          <div class="value" id="btc-market-cap">—</div>
+        </div>
+        <div class="stat-box" title="Trading volume (24h)">
+          <div class="head"><span class="label">24h Volume</span><i class="fa-solid fa-right-left icon"></i></div>
+          <div class="value" id="btc-volume">—</div>
+        </div>
+        <div class="stat-box" title="Price change (24h)">
+          <div class="head"><span class="label">24h Change</span><i class="fa-solid fa-percent icon"></i></div>
+          <div class="value" id="btc-price-change">—</div>
+        </div>
       </div>
     </div>
 
-    <div class="blockchain-metrics" id="blockchain-metrics">
-      <!-- Block Height -->
-      <div class="stat-box" title="Current block height">
-        <i class="fas fa-cubes icon"></i>
-        <p class="label">Current Block</p>
-        <p class="value" id="btc-block-height"></p>
-      </div>
-      <!-- Difficulty -->
-      <div class="stat-box" title="Mining difficulty">
-        <i class="fas fa-tachometer-alt icon"></i>
-        <p class="label">Difficulty</p>
-        <p class="value" id="btc-difficulty"></p>
-      </div>
-      <!-- Hashrate -->
-      <div class="stat-box" title="Network hashrate">
-        <i class="fas fa-microchip icon"></i>
-        <p class="label">Hashrate</p>
-        <p class="value" id="btc-hash-rate"></p>
-      </div>
-      <!-- Block Reward -->
-      <div class="stat-box" title="Current block reward">
-        <i class="fas fa-gift icon"></i>
-        <p class="label">Block Reward</p>
-        <p class="value" id="btc-block-reward"></p>
+    <!-- Chain metrics -->
+    <div class="panel">
+      <div class="blockchain-metrics" id="blockchain-metrics">
+        <div class="stat-box" title="Current block height">
+          <div class="head"><span class="label">Current Block</span><i class="fa-solid fa-cubes icon"></i></div>
+          <div class="value" id="btc-block-height">—</div>
+        </div>
+        <div class="stat-box" title="Mining difficulty">
+          <div class="head"><span class="label">Difficulty</span><i class="fa-solid fa-gauge-high icon"></i></div>
+          <div class="value" id="btc-difficulty">—</div>
+        </div>
+        <div class="stat-box" title="Network hashrate">
+          <div class="head"><span class="label">Hashrate</span><i class="fa-solid fa-microchip icon"></i></div>
+          <div class="value" id="btc-hash-rate">—</div>
+        </div>
+        <div class="stat-box" title="Current block reward">
+          <div class="head"><span class="label">Block Reward</span><i class="fa-solid fa-gift icon"></i></div>
+          <div class="value" id="btc-block-reward">—</div>
+        </div>
       </div>
     </div>
 
-    <div class="chart-container">
-      <h2>Bitcoin Price and Purchases Over Time</h2>
-      <div id="chart-error" class="error"></div>
-      <canvas id="priceChart"></canvas>
-      <div id="date-range-slider" style="margin:20px 0;"></div>
-      <div id="date-range-labels" style="display:flex;justify-content:space-between;color:#fff;font-size:.9em;"></div>
+    <!-- Chart -->
+    <div class="panel chart-container">
+      <h2>Bitcoin Price, Cost Basis, Purchases & Gain</h2>
+      <div id="chart-error" role="status" aria-live="polite"></div>
+      <canvas id="priceChart" height="120"></canvas>
+      <div id="date-range-slider" aria-label="Date range" title="Drag handles to filter the displayed date range"></div>
+      <div id="date-range-labels"><span>—</span><span>—</span></div>
     </div>
 
-    <div class="table-container">
+    <!-- Table -->
+    <div class="panel table-container">
       <h2>Transaction History</h2>
-      <table>
+      <table aria-label="Transactions">
         <thead>
           <tr>
             <th>Date</th>
@@ -269,7 +292,6 @@
       </table>
     </div>
 
-    <button onclick="updateTracker()">Refresh</button>
   </div>
 
   <!-- App script -->
