@@ -1,30 +1,54 @@
 /* ------------------------------------------------------------------
-   BTC Tracker – dynamic cost basis + purchases + cumulative gain
-   UI has been refined; core logic preserved.
-   ------------------------------------------------------------------ */
+   BTC Tracker – dynamic per-day Cost Basis line with Annotations
+   ------------------------------------------------------------------
+*/
 
-// Annotations for key dates (edit as needed)
+// Dependencies (include before this script in your HTML):
+// <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+// <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+// <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+// <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
+
+// Define key dates for vertical lines (modify as needed)
 const keyEvents = [
   {
     date: '2024-04-20',
     label: '4th Halving',
-    borderColor: '#FFFFFF',
+    borderColor:  '#FFFFFF',
     borderWidth: 3,
-    labelOptions: { rotation: 270, position: 'end', color: '#F7931A', backgroundColor: '#FFFFFF', font: { size: 12 } }
+    labelOptions: {
+      rotation: 270,
+      position: 'end',
+      color: '#F7931A',
+      backgroundColor: '#FFFFFF',
+      font: { size: 12 }
+    }
   },
   {
     date: '2024-01-04',
     label: 'US ETF Launch',
     borderColor: '#FFFFFF',
     borderWidth: 3,
-    labelOptions: { rotation: 270, position: 'end', color: '#0052FE', backgroundColor: '#FFFFFF', font: { size: 12 } }
+    labelOptions: {
+      rotation: 270,
+      position: 'end',
+      color: '#0052FE',
+      backgroundColor: '#FFFFFF',
+      font: { size: 12 }
+    }
   },
   {
     date: '2024-11-05',
     label: 'US Pres. Election',
     borderColor: '#FFFFFF',
     borderWidth: 3,
-    labelOptions: { rotation: 270, position: 'end', color: '#FF0000', backgroundColor: '#FFFFFF', font: { size: 12 } }
+    labelOptions: {
+      rotation: 270,
+      position: 'end',
+      color: '#FF0000',
+      backgroundColor: '#FFFFFF',
+      font: { size: 12 }
+    }
   }
 ];
 
@@ -34,38 +58,29 @@ let originalCostBasisData = [];
 let originalPurchaseData = [];
 let originalGainData = [];
 
-/* ----------------------------- Utilities */
-const $ = (id) => document.getElementById(id);
-const fmtUSD = (n) => (isFinite(n) ? n.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '—');
-const fmtNum = (n, d = 2) => (isFinite(n) ? Number(n).toFixed(d) : '—');
-
-function safeNumber(v) {
-  if (typeof v === 'number') return v;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-}
-
-/* ----------------------------- CSV fetch */
+/* ───────────────────────────── CSV fetch */
 async function fetchCSV(url) {
-  const res = await fetch(url + (url.includes('?') ? '&' : '?') + 'cache=' + Date.now());
-  if (!res.ok) throw new Error(`Failed to load ${url} (status ${res.status})`);
+  const res = await fetch(url + '?cache=' + Date.now());
+  if (!res.ok) throw new Error(`Failed to load ${url}`);
   const text = await res.text();
-  return new Promise((resolve) =>
-    Papa.parse(text, { header: true, skipEmptyLines: true, complete: (r) => resolve(r.data) })
+  return new Promise(resolve =>
+    Papa.parse(text, { header: true, complete: r => resolve(r.data) })
   );
 }
 
-/* ----------------------------- BTC market metrics */
+/* ───────────────────────────── BTC metrics */
 async function getBtcMetrics() {
   try {
-    const res = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin');
-    if (!res.ok) throw new Error(`CoinGecko status ${res.status}`);
+    const res = await fetch(
+      'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin'
+    );
+    if (!res.ok) throw new Error(`status ${res.status}`);
     const btc = (await res.json())[0];
     return {
-      currentPrice: safeNumber(btc.current_price),
-      marketCap: safeNumber(btc.market_cap),
-      volume24h: safeNumber(btc.total_volume),
-      priceChange24h: safeNumber(btc.price_change_percentage_24h)
+      currentPrice: btc.current_price,
+      marketCap: btc.market_cap,
+      volume24h: btc.total_volume,
+      priceChange24h: btc.price_change_percentage_24h
     };
   } catch (e) {
     console.error('BTC metrics fallback', e);
@@ -73,7 +88,7 @@ async function getBtcMetrics() {
   }
 }
 
-/* ----------------------------- Blockchain metrics */
+/* ───────────────────────────── Blockchain metrics */
 async function getBlockchainMetrics() {
   try {
     const [h, d, r, s] = await Promise.all([
@@ -82,12 +97,12 @@ async function getBlockchainMetrics() {
       fetch('https://blockchain.info/q/bcperblock'),
       fetch('https://blockchain.info/stats?format=json')
     ]);
-    if (![h, d, r, s].every((x) => x.ok)) throw new Error('Blockchain API call failed');
+    if (![h, d, r, s].every(x => x.ok)) throw new Error('One call failed');
     return {
-      blockHeight: Number(await h.text()),
-      difficulty: Number(await d.text()),
-      blockReward: Number(await r.text()),
-      hashRate: Number((await s.json()).hash_rate) / 1e9 // EH/s
+      blockHeight: +await h.text(),
+      difficulty: +await d.text(),
+      blockReward: +await r.text(),
+      hashRate: (await s.json()).hash_rate / 1e9 // EH/s
     };
   } catch (e) {
     console.error('Blockchain metrics fallback', e);
@@ -95,11 +110,13 @@ async function getBlockchainMetrics() {
   }
 }
 
-/* ----------------------------- Portfolio helpers */
+/* ───────────────────────────── Helpers */
 function buildCostBasisTimeline(purchases) {
-  const sorted = [...purchases].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  const sorted = [...purchases].sort(
+    (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+  );
   let btc = 0, cost = 0;
-  return sorted.map((p) => {
+  return sorted.map(p => {
     btc += p.quantity;
     cost += p.totalCost;
     return {
@@ -112,92 +129,97 @@ function buildCostBasisTimeline(purchases) {
 
 function buildGainSeries(costTimeline, hist) {
   return hist
-    .map((row) => {
+    .map(row => {
       const ts = new Date(row.Date);
-      const price = parseFloat(String(row.Price || '').replace(/[^0-9.]/g, ''));
-      const last = costTimeline.filter((t) => t.timestamp <= ts).slice(-1)[0] || { costBasis: 0, totalBtc: 0 };
+      const price = parseFloat((row.Price || '').replace(/[^0-9.]/g, ''));
+      const last =
+        costTimeline.filter(t => t.timestamp <= ts).slice(-1)[0] ||
+        { costBasis: 0, totalBtc: 0 };
       const gain = last.totalBtc ? (price - last.costBasis) * last.totalBtc : 0;
       return { x: ts, y: gain };
     })
-    .filter((p) => !isNaN(p.x) && !isNaN(p.y));
+    .filter(p => !isNaN(p.x) && !isNaN(p.y));
 }
 
-/* ----------------------------- Filter by slider range */
+/* ───────────────────────────── Filter */
 function filterDataByDateRange(s, e) {
-  const within = (arr) => arr.filter((pt) => pt.x >= s && pt.x <= e);
-  const byEx = (name) => (p) => p.exchange.toLowerCase().trim() === name;
-
+  const within = a => a.filter(pt => pt.x >= s && pt.x <= e);
   const priceData = within(originalPriceData);
   const cbData = within(originalCostBasisData);
-  const coinbaseData = within(originalPurchaseData.filter(byEx('coinbase')));
-  const geminiData = within(originalPurchaseData.filter(byEx('gemini')));
-  const venmoData = within(originalPurchaseData.filter(byEx('venmo')));
-  const coinbitsData = within(originalPurchaseData.filter(byEx('coinbits')));
+  const coinbaseData = within(
+    originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbase')
+  );
+  const geminiData = within(
+    originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'gemini')
+  );
+  const venmoData = within(
+    originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'venmo')
+  );
+  const coinbitsData = within(
+    originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbits')
+  );
   const gainData = within(originalGainData);
 
   priceChart.data.datasets[0].data = priceData;
   priceChart.data.datasets[1].data = cbData;
 
-  // Purchases: keep dynamic radii
   priceChart.data.datasets[2].data = coinbaseData;
-  priceChart.data.datasets[2].pointRadius = coinbaseData.map((p) => p.radius);
-  priceChart.data.datasets[2].pointHoverRadius = coinbaseData.map((p) => p.hoverRadius);
+  priceChart.data.datasets[2].pointRadius = coinbaseData.map(p => p.radius);
+  priceChart.data.datasets[2].pointHoverRadius = coinbaseData.map(p => p.hoverRadius);
 
   priceChart.data.datasets[3].data = geminiData;
-  priceChart.data.datasets[3].pointRadius = geminiData.map((p) => p.radius);
-  priceChart.data.datasets[3].pointHoverRadius = geminiData.map((p) => p.hoverRadius);
+  priceChart.data.datasets[3].pointRadius = geminiData.map(p => p.radius);
+  priceChart.data.datasets[3].pointHoverRadius = geminiData.map(p => p.hoverRadius);
 
   priceChart.data.datasets[4].data = venmoData;
-  priceChart.data.datasets[4].pointRadius = venmoData.map((p) => p.radius);
-  priceChart.data.datasets[4].pointHoverRadius = venmoData.map((p) => p.hoverRadius);
+  priceChart.data.datasets[4].pointRadius = venmoData.map(p => p.radius);
+  priceChart.data.datasets[4].pointHoverRadius = venmoData.map(p => p.hoverRadius);
 
   priceChart.data.datasets[5].data = coinbitsData;
-  priceChart.data.datasets[5].pointRadius = coinbitsData.map((p) => p.radius);
-  priceChart.data.datasets[5].pointHoverRadius = coinbitsData.map((p) => p.hoverRadius);
+  priceChart.data.datasets[5].pointRadius = coinbitsData.map(p => p.radius);
+  priceChart.data.datasets[5].pointHoverRadius = coinbitsData.map(p => p.hoverRadius);
 
   priceChart.data.datasets[6].data = gainData;
 
   priceChart.update();
 }
 
-/* ----------------------------- Range slider */
+/* ───────────────────────────── Slider */
 function initializeSlider(minDate, maxDate) {
-  const slider = $('date-range-slider');
-  const labels = $('date-range-labels');
-  if (!slider || typeof noUiSlider === 'undefined') {
-    // Hide if unavailable
-    slider?.style && (slider.style.display = 'none');
-    labels?.style && (labels.style.display = 'none');
-    return;
-  }
-  noUiSlider.create(slider, {
-    start: [minDate.getTime(), maxDate.getTime()],
-    connect: true,
-    range: { min: minDate.getTime(), max: maxDate.getTime() },
-    step: 24 * 60 * 60 * 1000,
-    behaviour: 'drag'
-  });
-  slider.noUiSlider.on('update', (v) => {
-    const [s, e] = v.map((n) => new Date(+n));
-    labels.innerHTML =
-      `<span>${s.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>` +
-      `<span>${e.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>`;
-    filterDataByDateRange(s, e);
-  });
-  labels.innerHTML =
-    `<span>${minDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>` +
-    `<span>${maxDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>`;
+  const slider = document.getElementById('date-range-slider');
+  const labels = document.getElementById('date-range-labels');
+  let tries = 0, maxRetries = 10;
+  (function tryInit() {
+    if (typeof noUiSlider !== 'undefined') {
+      noUiSlider.create(slider, {
+        start: [minDate.getTime(), maxDate.getTime()],
+        connect: true,
+        range: { min: minDate.getTime(), max: maxDate.getTime() },
+        step: 24 * 60 * 60 * 1000,
+        behaviour: 'drag'
+      });
+      slider.noUiSlider.on('update', v => {
+        const [s, e] = v.map(n => new Date(+n));
+        labels.innerHTML =
+          `<span>${s.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>` +
+          `<span>${e.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>`;
+        filterDataByDateRange(s, e);
+      });
+      labels.innerHTML =
+        `<span>${minDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>` +
+        `<span>${maxDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>`;
+    } else if (++tries <= maxRetries) {
+      setTimeout(tryInit, 500);
+    } else {
+      document.getElementById('chart-error').innerText = 'Date slider unavailable';
+      slider.style.display = labels.style.display = 'none';
+    }
+  })();
 }
 
-/* ----------------------------- Main refresh */
+/* ───────────────────────────── Main */
 async function updateTracker() {
   try {
-    // Register annotation plugin safely (Chart.js v4)
-    const ann = window['chartjs-plugin-annotation'] || window.ChartAnnotation;
-    if (ann && !Chart.registry.plugins.get('annotation')) {
-      Chart.register(ann);
-    }
-
     // Load CSVs
     const [transactions, historic] = await Promise.all([
       fetchCSV('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/transactions.csv'),
@@ -205,19 +227,26 @@ async function updateTracker() {
     ]);
 
     // Metrics
-    const [btcMetrics, blockchainMetrics] = await Promise.all([getBtcMetrics(), getBlockchainMetrics()]);
+    const btcMetrics = await getBtcMetrics();
+    const blockchainMetrics = await getBlockchainMetrics();
     const currentPrice = btcMetrics.currentPrice;
 
     // Purchases
     const purchases = transactions
-      .map((r) => ({
+      .map(r => ({
         timestamp: r.Timestamp,
         quantity: +r['Quantity Transacted'],
-        totalCost: +String(r['Total'] || '').replace(/[^0-9.]/g, ''),
-        priceAtTransaction: +String(r['Price at Transaction'] || '').replace(/[^0-9.]/g, ''),
-        exchange: (r.Exchange || '').trim()
+        totalCost: +((r['Total'] || '').replace(/[^0-9.]/g, '')),
+        priceAtTransaction: +((r['Price at Transaction'] || '').replace(/[^0-9.]/g, '')),
+        exchange: r.Exchange
       }))
-      .filter((p) => !isNaN(p.quantity) && !isNaN(p.totalCost) && !isNaN(p.priceAtTransaction) && p.exchange);
+      .filter(
+        p =>
+          !isNaN(p.quantity) &&
+          !isNaN(p.totalCost) &&
+          !isNaN(p.priceAtTransaction) &&
+          p.exchange
+      );
 
     // Portfolio math
     const totalBtc = purchases.reduce((sum, p) => sum + p.quantity, 0);
@@ -227,196 +256,192 @@ async function updateTracker() {
     const gainLoss = currentVal - invested;
     const gainPct = invested ? (gainLoss / invested) * 100 : 0;
 
-    // Split tile: "To 1 BTC"
+    // ── Split tile: "To 1 BTC"
     const btcRemaining = Math.max(1 - totalBtc, 0);
     const costToOne = btcRemaining * currentPrice;
 
     // DOM update
-    $('btc-to-one').textContent = `${fmtNum(btcRemaining, 8)} BTC`;
-    $('usd-to-one').textContent = fmtUSD(costToOne);
+    const $ = id => document.getElementById(id);
 
-    $('total-btc').textContent = fmtNum(totalBtc, 8);
-    $('invested').textContent = fmtUSD(invested);
-    $('cost-basis').textContent = fmtUSD(costBasis);
-    $('current-value').textContent = fmtUSD(currentVal);
+    // Split tile values
+    $('btc-to-one').innerText = btcRemaining.toFixed(8) + ' BTC';
+    $('usd-to-one').innerText = costToOne.toLocaleString('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    });
+
+    // Summary tiles
+    $('total-btc').innerText = totalBtc.toFixed(8);
+    $('invested').innerText = invested.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    $('cost-basis').innerText = costBasis.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    $('current-value').innerText = currentVal.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     $('gain-loss').innerHTML =
       `<span class="${gainLoss >= 0 ? 'positive' : 'negative'}">` +
-      `${gainLoss >= 0 ? '+' : ''}${fmtUSD(Math.abs(gainLoss))} ` +
-      `<span class="percentage">(${(gainPct).toFixed(2)}%)</span>` +
+        `${gainLoss >= 0 ? '+' : ''}` +
+        `${gainLoss.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} ` +
+        `<span class="percentage">(${gainPct.toFixed(2)}%)</span>` +
       `</span>`;
 
     // BTC market tiles
-    $('btc-price').textContent = fmtUSD(currentPrice);
-    $('btc-market-cap').textContent = fmtUSD(btcMetrics.marketCap);
-    $('btc-volume').textContent = fmtUSD(btcMetrics.volume24h);
+    $('btc-price').innerText = currentPrice.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    $('btc-market-cap').innerText = btcMetrics.marketCap.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    $('btc-volume').innerText = btcMetrics.volume24h.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     $('btc-price-change').innerHTML =
       `<span class="${btcMetrics.priceChange24h >= 0 ? 'positive' : 'negative'}">` +
-      `${btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)}%` +
+        `${btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)}%` +
       `</span>`;
 
     // Chain tiles
-    $('btc-block-height').textContent = safeNumber(blockchainMetrics.blockHeight).toLocaleString();
-    $('btc-difficulty').textContent = (safeNumber(blockchainMetrics.difficulty) / 1e12).toFixed(2) + ' T';
-    $('btc-hash-rate').textContent = safeNumber(blockchainMetrics.hashRate).toFixed(2) + ' EH/s';
-    $('btc-block-reward').textContent = safeNumber(blockchainMetrics.blockReward).toFixed(3) + ' BTC';
+    $('btc-block-height').innerText = blockchainMetrics.blockHeight.toLocaleString();
+    $('btc-difficulty').innerText = (blockchainMetrics.difficulty / 1e12).toFixed(2) + ' T';
+    $('btc-hash-rate').innerText = blockchainMetrics.hashRate.toFixed(2) + ' EH/s';
+    $('btc-block-reward').innerText = blockchainMetrics.blockReward.toFixed(3) + ' BTC';
 
     // Transaction table
-    const tableBody = $('transactions-body');
+    const tableBody = document.getElementById('transactions-body');
     if (tableBody) {
       tableBody.innerHTML = '';
       purchases
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-        .forEach((p) => {
+        .forEach(p => {
           const tr = document.createElement('tr');
           tr.innerHTML =
             `<td>${new Date(p.timestamp).toLocaleDateString()}</td>` +
-            `<td>${fmtNum(p.quantity, 8)}</td>` +
-            `<td>${fmtUSD(p.totalCost)}</td>` +
-            `<td>${fmtUSD(p.priceAtTransaction)}</td>` +
+            `<td>${p.quantity.toFixed(8)}</td>` +
+            `<td>${p.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>` +
+            `<td>${p.priceAtTransaction.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>` +
             `<td>${p.exchange}</td>`;
           tableBody.appendChild(tr);
         });
     }
 
-    // Build chart data
+    // Build data arrays
     originalPriceData = historic
-      .map((r) => {
+      .map(r => {
         const ts = new Date(r.Date);
-        const y = +String(r.Price || '').replace(/[^0-9.]/g, '');
+        const y = +((r.Price || '').replace(/[^0-9.]/g, ''));
         return { x: ts, y };
       })
-      .filter((pt) => !isNaN(pt.x) && !isNaN(pt.y));
+      .filter(pt => !isNaN(pt.x) && !isNaN(pt.y));
 
-    const maxQty = Math.max(...purchases.map((p) => p.quantity), 0);
-    originalPurchaseData = purchases.map((p) => {
+    const maxQty = Math.max(...purchases.map(p => p.quantity), 0);
+    originalPurchaseData = purchases.map(p => {
       const ts = new Date(p.timestamp);
-      const frac = maxQty ? Math.log1p(p.quantity / maxQty) / Math.log1p(1 + 1) : 0; // normalize 0..1
+      const frac = maxQty ? Math.log1p(p.quantity / maxQty) / Math.log1p(1) : 0;
       const rMin = 4, rMax = 20;
-      const r = rMin + frac * (rMax - rMin);
       return {
         x: ts,
         y: p.priceAtTransaction,
         quantity: p.quantity,
         cost: p.totalCost,
-        radius: r,
-        hoverRadius: r + 2,
+        radius: rMin + frac * (rMax - rMin),
+        hoverRadius: rMin + frac * (rMax - rMin) + 2,
         exchange: p.exchange
       };
     });
 
     const costTimeline = buildCostBasisTimeline(purchases);
-    originalCostBasisData = originalPriceData.map((pt) => {
-      const last = costTimeline.filter((t) => t.timestamp <= pt.x).slice(-1)[0] || { costBasis: 0 };
+    originalCostBasisData = originalPriceData.map(pt => {
+      const last = costTimeline.filter(t => t.timestamp <= pt.x).slice(-1)[0] || { costBasis: 0 };
       return { x: pt.x, y: last.costBasis };
     });
 
     originalGainData = buildGainSeries(costTimeline, historic);
-    const y1Max = Math.max(0, ...originalGainData.map((d) => d.y)) * 1.5 || 1;
+    const y1Max = Math.max(0, ...originalGainData.map(d => d.y)) * 1.5 || 1;
 
     // Create / refresh chart
     if (priceChart) priceChart.destroy();
-    const ctx = $('priceChart')?.getContext('2d');
-    if (!ctx) throw new Error('Chart canvas not found');
-
-    // Fancy gradient line fills (subtle)
-    const gPrice = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
-    gPrice.addColorStop(0, 'rgba(255,255,255,0.25)');
-    gPrice.addColorStop(1, 'rgba(255,255,255,0.02)');
-
-    const gGain = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
-    gGain.addColorStop(0, 'rgba(57,255,20,0.35)');
-    gGain.addColorStop(1, 'rgba(57,255,20,0.04)');
-
+    const ctx = document.getElementById('priceChart').getContext('2d');
     priceChart = new Chart(ctx, {
       type: 'line',
       data: {
         datasets: [
-          // 0: BTC Price
+          /* 0: BTC Price */
           {
             label: 'BTC Price (USD)',
             data: originalPriceData,
-            borderColor: '#e8eefc',
-            backgroundColor: gPrice,
+            borderColor: '#fff',
+            backgroundColor: 'rgba(255,255,255,0.03)',
             fill: false,
-            tension: 0.28,
+            tension: 0.3,
             pointRadius: 0,
-            borderWidth: 2,
             yAxisID: 'y',
             order: 1
           },
-          // 1: Cost Basis
+          /* 1: Cost Basis */
           {
             label: 'Cost Basis (USD)',
             data: originalCostBasisData,
-            borderColor: '#ffd36b',
-            backgroundColor: 'rgba(255,211,107,0.08)',
+            borderColor: '#FFA500',
+            backgroundColor: 'rgba(255,165,0,0.08)',
             borderDash: [6, 4],
             fill: false,
             tension: 0,
             pointRadius: 0,
-            borderWidth: 2,
             yAxisID: 'y',
             order: 1
           },
-          // 2..5: Purchases by exchange (scatter)
+          /* 2: Coinbase Purchases */
           {
             label: 'Coinbase Purchases',
             type: 'scatter',
-            data: originalPurchaseData.filter((p) => p.exchange.toLowerCase().trim() === 'coinbase'),
+            data: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbase'),
             backgroundColor: '#1E90FF',
-            borderColor: '#0b1020',
+            borderColor: '#000',
             borderWidth: 1,
-            pointRadius: (ctx) => ctx.raw?.radius ?? 6,
-            pointHoverRadius: (ctx) => ctx.raw?.hoverRadius ?? 8,
+            pointRadius: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbase').map(p => p.radius),
+            pointHoverRadius: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbase').map(p => p.hoverRadius),
             yAxisID: 'y',
             order: 0
           },
+          /* 3: Gemini Purchases */
           {
             label: 'Gemini Purchases',
             type: 'scatter',
-            data: originalPurchaseData.filter((p) => p.exchange.toLowerCase().trim() === 'gemini'),
+            data: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'gemini'),
             backgroundColor: '#800080',
-            borderColor: '#0b1020',
+            borderColor: '#000',
             borderWidth: 1,
-            pointRadius: (ctx) => ctx.raw?.radius ?? 6,
-            pointHoverRadius: (ctx) => ctx.raw?.hoverRadius ?? 8,
+            pointRadius: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'gemini').map(p => p.radius),
+            pointHoverRadius: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'gemini').map(p => p.hoverRadius),
             yAxisID: 'y',
             order: 0
           },
+          /* 4: Venmo Purchases */
           {
             label: 'Venmo Purchases',
             type: 'scatter',
-            data: originalPurchaseData.filter((p) => p.exchange.toLowerCase().trim() === 'venmo'),
-            backgroundColor: '#00FF7F',
-            borderColor: '#0b1020',
+            data: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'venmo'),
+            backgroundColor: '#00FF00',
+            borderColor: '#000',
             borderWidth: 1,
-            pointRadius: (ctx) => ctx.raw?.radius ?? 6,
-            pointHoverRadius: (ctx) => ctx.raw?.hoverRadius ?? 8,
+            pointRadius: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'venmo').map(p => p.radius),
+            pointHoverRadius: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'venmo').map(p => p.hoverRadius),
             yAxisID: 'y',
             order: 0
           },
+          /* 5: Coinbits Purchases */
           {
             label: 'Coinbits Purchases',
             type: 'scatter',
-            data: originalPurchaseData.filter((p) => p.exchange.toLowerCase().trim() === 'coinbits'),
+            data: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbits'),
             backgroundColor: '#FFD700',
-            borderColor: '#0b1020',
+            borderColor: '#000',
             borderWidth: 1,
-            pointRadius: (ctx) => ctx.raw?.radius ?? 6,
-            pointHoverRadius: (ctx) => ctx.raw?.hoverRadius ?? 8,
+            pointRadius: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbits').map(p => p.radius),
+            pointHoverRadius: originalPurchaseData.filter(p => p.exchange.toLowerCase() === 'coinbits').map(p => p.hoverRadius),
             yAxisID: 'y',
             order: 0
           },
-          // 6: Cumulative Gain (secondary axis)
+          /* 6: Cumulative Gain */
           {
             label: 'Cumulative Gain (USD)',
             data: originalGainData,
             borderColor: '#39FF14',
-            backgroundColor: gGain,
+            backgroundColor: 'rgba(57,255,20,0.1)',
             fill: false,
-            tension: 0.25,
+            tension: 0.3,
             pointRadius: 0,
-            borderWidth: 2,
             yAxisID: 'y1',
             order: 2
           }
@@ -424,60 +449,47 @@ async function updateTracker() {
       },
       options: {
         responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
         scales: {
           x: {
             type: 'time',
             time: { unit: 'month', displayFormats: { month: 'MMM yy' } },
-            title: { display: true, text: 'Date', color: '#e6ecff', font: { size: 13, weight: '700' } },
-            grid: { color: '#223152' },
-            ticks: { color: '#d7def0' },
+            title: { display: true, text: 'Date', color: '#fff', font: { size: 14 } },
+            grid: { color: '#444' },
+            ticks: { color: '#fff' },
             min: '2022-01-01'
           },
           y: {
-            title: { display: true, text: 'Price (USD)', color: '#e6ecff', font: { size: 13, weight: '700' } },
-            grid: { color: '#1b2640' },
-            ticks: {
-              color: '#d7def0',
-              callback: (v) => fmtUSD(Number(v)).replace('.00', '')
-            },
+            title: { display: true, text: 'Price (USD)', color: '#fff', font: { size: 14 } },
+            grid: { color: '#444' },
+            ticks: { color: '#fff', callback: v => v.toLocaleString() },
             suggestedMax: 150000,
             suggestedMin: 0
           },
           y1: {
             position: 'right',
-            title: { display: true, text: 'Cumulative Gain (USD)', color: '#e6ecff', font: { size: 13, weight: '700' } },
+            title: { display: true, text: 'Cumulative Gain (USD)', color: '#fff', font: { size: 14 } },
             grid: { drawOnChartArea: false },
-            ticks: {
-              color: '#d7def0',
-              callback: (v) => fmtUSD(Number(v)).replace('.00', '')
-            },
+            ticks: { color: '#fff', callback: v => v.toLocaleString() },
             suggestedMax: y1Max,
             suggestedMin: 0
           }
         },
         plugins: {
-          legend: {
-            labels: { color: '#e6ecff', font: { size: 12, weight: '600' }, usePointStyle: true, pointStyle: 'circle' }
-          },
+          legend: { labels: { color: '#fff', font: { size: 12 } } },
           tooltip: {
-            backgroundColor: 'rgba(5,10,20,0.92)',
+            backgroundColor: 'rgba(0,0,0,0.8)',
             titleColor: '#fff',
-            bodyColor: '#e9eefc',
-            borderColor: '#223152',
-            borderWidth: 1,
-            padding: 10,
+            bodyColor: '#fff',
             callbacks: {
-              label: (ctx) => {
-                const lbl = ctx.dataset.label || '';
+              label: ctx => {
+                const lbl = ctx.dataset.label;
                 if (['Coinbase Purchases','Gemini Purchases','Venmo Purchases','Coinbits Purchases'].includes(lbl)) {
-                  const p = ctx.raw || {};
-                  return `${lbl}: Bought ${fmtNum(p.quantity, 8)} BTC for ${fmtUSD(p.cost)}`;
+                  const p = ctx.raw;
+                  return `${lbl}: Bought ${p.quantity.toFixed(8)} BTC for ${p.cost.toLocaleString('en-US',{style:'currency',currency:'USD'})}`;
                 }
-                if (lbl === 'Cumulative Gain (USD)') return `Gain: ${fmtUSD(ctx.parsed.y)}`;
-                if (lbl === 'Cost Basis (USD)') return `Cost Basis: ${fmtUSD(ctx.parsed.y)}`;
-                return `Price: ${fmtUSD(ctx.parsed.y)}`;
+                if (lbl === 'Cumulative Gain (USD)') return `Gain: ${ctx.parsed.y.toLocaleString()}`;
+                if (lbl === 'Cost Basis (USD)') return `Cost Basis: ${ctx.parsed.y.toLocaleString('en-US',{style:'currency',currency:'USD'})}`;
+                return `Price: ${ctx.parsed.y.toLocaleString()}`;
               }
             }
           },
@@ -508,15 +520,17 @@ async function updateTracker() {
       }
     });
 
-    // Date range slider: keep available without changing core default behavior
-    // Uncomment to enable by default:
-    // initializeSlider(new Date('2022-01-01'), new Date());
+    // Initialize range slider
+    //initializeSlider(
+      //new Date('2022-01-01'),
+     // new Date(new Date().setDate(new Date().getDate() + 60))
+    //);
 
   } catch (e) {
     console.error(e);
-    $('chart-error').innerText = `Error: ${e.message}`;
+    document.getElementById('chart-error').innerText = `Error: ${e.message}`;
   }
 }
 
-// Initial load
+// On load
 updateTracker();
