@@ -1,1 +1,23 @@
-https://mjamiv.github.io/btc_tracker/
+BTC tracker dashboard.
+
+Live app:
+- https://mjamiv.github.io/btc_tracker/
+
+Local run:
+- Open `/Users/mjamiv/coding/btc-chart/btc_tracker/index.html` in a browser.
+- Use **Add Transaction** to store new entries locally in your browser.
+- Use **Export Updated CSV** to download a merged `transactions.csv` that includes local additions.
+
+Automations:
+- Daily historical BTC prices are refreshed by `/Users/mjamiv/coding/btc-chart/btc_tracker/.github/workflows/update-historical-prices.yml`.
+- Security scans run in `/Users/mjamiv/coding/btc-chart/btc_tracker/.github/workflows/security-sweep.yml`.
+- Coinbase fills can be synced to `/Users/mjamiv/coding/btc-chart/btc_tracker/transactions.csv` by `/Users/mjamiv/coding/btc-chart/btc_tracker/.github/workflows/sync-coinbase-transactions.yml`.
+
+Security note:
+- GitHub Pages is public-by-design for static assets. See `/Users/mjamiv/coding/btc-chart/btc_tracker/SECURITY.md` before redeploying sensitive data.
+
+Coinbase sync setup:
+- Add repo secret `COINBASE_API_KEY` (Advanced Trade API key name).
+- Add repo secret `COINBASE_API_SECRET` (Advanced Trade API private key PEM).
+- Trigger `Sync Coinbase Transactions` workflow or wait for the 15-minute schedule.
+- Sync logic lives in `/Users/mjamiv/coding/btc-chart/btc_tracker/scripts/sync_coinbase_transactions.py`.

@@ -57,6 +57,19 @@ let originalPriceData = [];
 let originalCostBasisData = [];
 let originalPurchaseData = [];
 let originalGainData = [];
+let csvTransactions = [];
+
+const LOCAL_TX_STORAGE_KEY = 'btcTrackerLocalTransactionsV1';
+const CSV_FIELDS = [
+  'Timestamp',
+  'Quantity Transacted',
+  'Price Currency',
+  'Price at Transaction',
+  'Subtotal',
+  'Total',
+  'Fees',
+  'Exchange'
+];
 
 /* ───────────────────────────── CSV fetch */
 async function fetchCSV(url) {
@@ -66,6 +79,134 @@ async function fetchCSV(url) {
   return new Promise(resolve =>
     Papa.parse(text, { header: true, complete: r => resolve(r.data) })
   );
+}
+
+function parseUsd(value) {
+  return +String(value || '').replace(/[^0-9.-]/g, '');
+}
+
+function parseTimestamp(value) {
+  if (!value) return new Date(NaN);
+  const normalized = String(value).trim().replace(' ', 'T');
+  const parsed = new Date(normalized);
+  if (!isNaN(parsed.getTime())) return parsed;
+  return new Date(normalized + 'Z');
+}
+
+function formatCsvTimestamp(dateValue) {
+  const dateObj = dateValue instanceof Date ? dateValue : new Date(dateValue);
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const d = String(dateObj.getDate()).padStart(2, '0');
+  const hh = String(dateObj.getHours()).padStart(2, '0');
+  const mm = String(dateObj.getMinutes()).padStart(2, '0');
+  const ss = String(dateObj.getSeconds()).padStart(2, '0');
+  return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+}
+
+function formatDateTimeLocal(dateObj) {
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const d = String(dateObj.getDate()).padStart(2, '0');
+  const hh = String(dateObj.getHours()).padStart(2, '0');
+  const mm = String(dateObj.getMinutes()).padStart(2, '0');
+  const ss = String(dateObj.getSeconds()).padStart(2, '0');
+  return `${y}-${m}-${d}T${hh}:${mm}:${ss}`;
+}
+
+function formatUsd(amount) {
+  return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+}
+
+function normalizeTransactionRow(row) {
+  return {
+    Timestamp: String(row.Timestamp || '').trim(),
+    'Quantity Transacted': String(row['Quantity Transacted'] || '').trim(),
+    'Price Currency': String(row['Price Currency'] || 'USD').trim() || 'USD',
+    'Price at Transaction': String(row['Price at Transaction'] || '').trim(),
+    Subtotal: String(row.Subtotal || '').trim(),
+    Total: String(row.Total || '').trim(),
+    Fees: String(row.Fees || '').trim(),
+    Exchange: String(row.Exchange || '').trim()
+  };
+}
+
+function transactionKey(row) {
+  return [
+    row.Timestamp,
+    row['Quantity Transacted'],
+    row.Total,
+    row['Price at Transaction'],
+    row.Exchange
+  ].join('|');
+}
+
+function mergeTransactionRows(baseRows, localRows) {
+  const merged = [...baseRows, ...localRows]
+    .map(normalizeTransactionRow)
+    .filter(r => r.Timestamp);
+  const seen = new Set();
+  const deduped = merged.filter(row => {
+    const key = transactionKey(row);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return deduped.sort((a, b) => parseTimestamp(b.Timestamp) - parseTimestamp(a.Timestamp));
+}
+
+function getLocalTransactions() {
+  try {
+    const raw = localStorage.getItem(LOCAL_TX_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(normalizeTransactionRow).filter(r => r.Timestamp);
+  } catch (e) {
+    console.error('Failed to read local transactions', e);
+    return [];
+  }
+}
+
+function setLocalTransactions(rows) {
+  try {
+    localStorage.setItem(LOCAL_TX_STORAGE_KEY, JSON.stringify(rows.map(normalizeTransactionRow)));
+    return true;
+  } catch (e) {
+    console.error('Failed to persist local transactions', e);
+    return false;
+  }
+}
+
+function updateLocalTransactionCount() {
+  const countEl = document.getElementById('local-transaction-count');
+  if (!countEl) return;
+  const count = getLocalTransactions().length;
+  countEl.textContent = count ? `${count} local addition${count === 1 ? '' : 's'}` : 'No local additions';
+}
+
+function setFormMessage(message, type) {
+  const msgEl = document.getElementById('add-transaction-message');
+  if (!msgEl) return;
+  msgEl.textContent = message;
+  msgEl.className = `form-message ${type || ''}`.trim();
+}
+
+function downloadTransactionsCsv(rows) {
+  const content = Papa.unparse(rows, {
+    columns: CSV_FIELDS,
+    header: true,
+    newline: '\r\n'
+  });
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+  const href = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = href;
+  link.download = 'transactions.csv';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(href);
 }
 
 /* ───────────────────────────── BTC metrics */
@@ -113,14 +254,14 @@ async function getBlockchainMetrics() {
 /* ───────────────────────────── Helpers */
 function buildCostBasisTimeline(purchases) {
   const sorted = [...purchases].sort(
-    (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+    (a, b) => parseTimestamp(a.timestamp) - parseTimestamp(b.timestamp)
   );
   let btc = 0, cost = 0;
   return sorted.map(p => {
     btc += p.quantity;
     cost += p.totalCost;
     return {
-      timestamp: new Date(p.timestamp + ' UTC'),
+      timestamp: parseTimestamp(p.timestamp),
       costBasis: btc ? cost / btc : 0,
       totalBtc: btc
     };
@@ -252,6 +393,9 @@ async function updateTracker() {
       fetchCSV('transactions.csv'),
       fetchCSV('historical_btc_prices.csv')
     ]);
+    csvTransactions = transactions.map(normalizeTransactionRow).filter(r => r.Timestamp);
+    const mergedTransactionRows = mergeTransactionRows(csvTransactions, getLocalTransactions());
+    updateLocalTransactionCount();
 
     // Metrics
     const btcMetrics = await getBtcMetrics();
@@ -259,12 +403,12 @@ async function updateTracker() {
     const currentPrice = btcMetrics.currentPrice;
 
     // Purchases
-    const purchases = transactions
+    const purchases = mergedTransactionRows
       .map(r => ({
         timestamp: r.Timestamp,
-        quantity: +r['Quantity Transacted'],
-        totalCost: +((r['Total'] || '').replace(/[^0-9.]/g, '')),
-        priceAtTransaction: +((r['Price at Transaction'] || '').replace(/[^0-9.]/g, '')),
+        quantity: +String(r['Quantity Transacted'] || '').replace(/[^0-9.-]/g, ''),
+        totalCost: parseUsd(r.Total),
+        priceAtTransaction: parseUsd(r['Price at Transaction']),
         exchange: r.Exchange
       }))
       .filter(
@@ -292,26 +436,23 @@ async function updateTracker() {
 
     // Split tile values
     $('btc-to-one').innerText = btcRemaining.toFixed(8) + ' BTC';
-    $('usd-to-one').innerText = costToOne.toLocaleString('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    });
+    $('usd-to-one').innerText = formatUsd(costToOne);
 
     // Summary tiles
     $('total-btc').innerText = totalBtc.toFixed(8);
-    $('invested').innerText = invested.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-    $('cost-basis').innerText = costBasis.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-    $('current-value').innerText = currentVal.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    $('invested').innerText = formatUsd(invested);
+    $('cost-basis').innerText = formatUsd(costBasis);
+    $('current-value').innerText = formatUsd(currentVal);
     setSignedValue(
       $('gain-loss'),
-      `${gainLoss >= 0 ? '+' : ''}${gainLoss.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} (${gainPct.toFixed(2)}%)`,
+      `${gainLoss >= 0 ? '+' : ''}${formatUsd(gainLoss)} (${gainPct.toFixed(2)}%)`,
       gainLoss >= 0
     );
 
     // BTC market tiles
-    $('btc-price').innerText = currentPrice.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-    $('btc-market-cap').innerText = btcMetrics.marketCap.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-    $('btc-volume').innerText = btcMetrics.volume24h.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    $('btc-price').innerText = formatUsd(currentPrice);
+    $('btc-market-cap').innerText = formatUsd(btcMetrics.marketCap);
+    $('btc-volume').innerText = formatUsd(btcMetrics.volume24h);
     setSignedValue(
       $('btc-price-change'),
       `${btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)}%`,
@@ -329,13 +470,13 @@ async function updateTracker() {
     if (tableBody) {
       tableBody.replaceChildren();
       purchases
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .sort((a, b) => parseTimestamp(b.timestamp) - parseTimestamp(a.timestamp))
         .forEach(p => {
           const tr = document.createElement('tr');
-          appendCell(tr, new Date(p.timestamp).toLocaleDateString());
+          appendCell(tr, parseTimestamp(p.timestamp).toLocaleDateString());
           appendCell(tr, p.quantity.toFixed(8));
-          appendCell(tr, p.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' }));
-          appendCell(tr, p.priceAtTransaction.toLocaleString('en-US', { style: 'currency', currency: 'USD' }));
+          appendCell(tr, formatUsd(p.totalCost));
+          appendCell(tr, formatUsd(p.priceAtTransaction));
           appendCell(tr, p.exchange);
           tableBody.appendChild(tr);
         });
@@ -352,7 +493,7 @@ async function updateTracker() {
 
     const maxQty = Math.max(...purchases.map(p => p.quantity), 0);
     originalPurchaseData = purchases.map(p => {
-      const ts = new Date(p.timestamp);
+      const ts = parseTimestamp(p.timestamp);
       const frac = maxQty ? Math.log1p(p.quantity / maxQty) / Math.log1p(1) : 0;
       const rMin = 4, rMax = 20;
       return {
@@ -558,10 +699,117 @@ async function updateTracker() {
   }
 }
 
+function handleAddTransaction(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+
+  const quantity = +String(data.get('quantity') || '').trim();
+  const total = +String(data.get('total') || '').trim();
+  const fees = +String(data.get('fees') || '').trim();
+  const exchange = String(data.get('exchange') || '')
+    .replace(/[^a-z0-9 ._-]/gi, '')
+    .trim();
+
+  const timestampRaw = String(data.get('timestamp') || '').trim();
+  const timestampDate = parseTimestamp(timestampRaw);
+
+  if (isNaN(timestampDate.getTime())) {
+    setFormMessage('Invalid timestamp.', 'error');
+    return;
+  }
+  if (!(quantity > 0) || !(total > 0) || !(fees >= 0)) {
+    setFormMessage('Quantity/total/fees values are invalid.', 'error');
+    return;
+  }
+  if (fees > total) {
+    setFormMessage('Fees cannot be greater than total paid.', 'error');
+    return;
+  }
+  if (!exchange) {
+    setFormMessage('Exchange is required.', 'error');
+    return;
+  }
+
+  const subtotal = total - fees;
+  const priceAtTransaction = subtotal > 0 ? subtotal / quantity : total / quantity;
+  const row = {
+    Timestamp: formatCsvTimestamp(timestampDate),
+    'Quantity Transacted': quantity.toFixed(8),
+    'Price Currency': 'USD',
+    'Price at Transaction': formatUsd(priceAtTransaction),
+    Subtotal: formatUsd(subtotal),
+    Total: formatUsd(total),
+    Fees: formatUsd(fees),
+    Exchange: exchange
+  };
+
+  const localRows = getLocalTransactions();
+  localRows.push(row);
+  if (!setLocalTransactions(localRows)) {
+    setFormMessage('Failed to save local transaction in browser storage.', 'error');
+    return;
+  }
+
+  setFormMessage('Transaction added locally. Use "Export Updated CSV" when ready.', 'success');
+  form.reset();
+  const tsInput = document.getElementById('tx-timestamp');
+  if (tsInput) tsInput.value = formatDateTimeLocal(new Date());
+  const exchangeInput = document.getElementById('tx-exchange');
+  if (exchangeInput) exchangeInput.value = exchange;
+  const feesInput = document.getElementById('tx-fees');
+  if (feesInput) feesInput.value = '0';
+  updateTracker();
+}
+
+function handleExportTransactionsCsv() {
+  const mergedRows = mergeTransactionRows(csvTransactions, getLocalTransactions());
+  if (!mergedRows.length) {
+    setFormMessage('No transaction rows available for export.', 'error');
+    return;
+  }
+  downloadTransactionsCsv(mergedRows);
+  setFormMessage('Exported transactions.csv. Replace repository file and commit.', 'success');
+}
+
+function handleClearLocalTransactions() {
+  const localRows = getLocalTransactions();
+  if (!localRows.length) {
+    setFormMessage('There are no local additions to clear.', 'error');
+    return;
+  }
+  localStorage.removeItem(LOCAL_TX_STORAGE_KEY);
+  setFormMessage('Cleared local additions.', 'success');
+  updateTracker();
+}
+
+function initializeTransactionControls() {
+  const form = document.getElementById('add-transaction-form');
+  if (form) {
+    form.addEventListener('submit', handleAddTransaction);
+  }
+
+  const exportBtn = document.getElementById('export-transactions-button');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', handleExportTransactionsCsv);
+  }
+
+  const clearBtn = document.getElementById('clear-local-transactions-button');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', handleClearLocalTransactions);
+  }
+
+  const timestampInput = document.getElementById('tx-timestamp');
+  if (timestampInput && !timestampInput.value) {
+    timestampInput.value = formatDateTimeLocal(new Date());
+  }
+  updateLocalTransactionCount();
+}
+
 // On load
 const refreshButton = document.getElementById('refresh-button');
 if (refreshButton) {
   refreshButton.addEventListener('click', updateTracker);
 }
-
+initializeTransactionControls();
 updateTracker();

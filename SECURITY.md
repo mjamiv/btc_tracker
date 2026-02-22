@@ -27,6 +27,7 @@ If your portfolio data must be private, do not publish sensitive CSV files to a 
 - Data now loads from same-origin files instead of `raw.githubusercontent.com`.
 - Automated secret/static scans run from `.github/workflows/security-sweep.yml`.
 - Automated daily BTC historical data updates run from `.github/workflows/update-historical-prices.yml`.
+- Coinbase API usage is server-side only via GitHub Actions (`.github/workflows/sync-coinbase-transactions.yml`); API keys are not embedded in frontend code.
 
 ## Reporting a Security Issue
 

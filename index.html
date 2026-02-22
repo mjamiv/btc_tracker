@@ -155,6 +155,39 @@
     </div>
 
     <div class="table-container">
+      <div class="transaction-entry-header">
+        <h2>Add Transaction</h2>
+        <p id="local-transaction-count" class="local-transaction-count">No local additions</p>
+      </div>
+      <p class="transaction-entry-note">
+        New transactions are saved in this browser only until you export the CSV.
+      </p>
+      <form id="add-transaction-form" class="transaction-form" autocomplete="off">
+        <label for="tx-timestamp">Timestamp</label>
+        <input id="tx-timestamp" name="timestamp" type="datetime-local" step="1" required />
+
+        <label for="tx-quantity">BTC Quantity</label>
+        <input id="tx-quantity" name="quantity" type="number" step="0.00000001" min="0.00000001" required />
+
+        <label for="tx-total">Total Paid (USD)</label>
+        <input id="tx-total" name="total" type="number" step="0.01" min="0.01" required />
+
+        <label for="tx-fees">Fees (USD)</label>
+        <input id="tx-fees" name="fees" type="number" step="0.01" min="0" value="0" required />
+
+        <label for="tx-exchange">Exchange</label>
+        <input id="tx-exchange" name="exchange" type="text" maxlength="40" value="Coinbase" required />
+
+        <div class="transaction-actions">
+          <button id="add-transaction-button" type="submit">Add Transaction</button>
+          <button id="export-transactions-button" type="button">Export Updated CSV</button>
+          <button id="clear-local-transactions-button" type="button">Clear Local Additions</button>
+        </div>
+      </form>
+      <p id="add-transaction-message" class="form-message" aria-live="polite"></p>
+    </div>
+
+    <div class="table-container">
       <h2>Transaction History</h2>
       <table>
         <thead>
@@ -170,7 +203,7 @@
       </table>
     </div>
 
-    <button id="refresh-button" type="button">Refresh</button>
+    <button id="refresh-button" type="button" class="refresh-button">Refresh</button>
   </div>
 
   <!-- App script -->
