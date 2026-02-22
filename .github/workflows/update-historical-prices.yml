@@ -1,0 +1,38 @@
+name: Update Historical BTC Prices
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "10 1 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update-prices:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Update historical prices CSV
+        run: python scripts/update_historical_prices.py
+
+      - name: Commit and push if data changed
+        run: |
+          if git diff --quiet historical_btc_prices.csv; then
+            echo "No data change to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add historical_btc_prices.csv
+          git commit -m "chore(data): update daily BTC history"
+          git push

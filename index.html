@@ -3,135 +3,36 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="referrer" content="no-referrer" />
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
+  <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data:; font-src 'self' https://cdnjs.cloudflare.com data:; connect-src 'self' https://api.coingecko.com https://blockchain.info; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests; block-all-mixed-content"
+  />
   <title>mjamiv btc</title>
 
+  <link rel="stylesheet" href="styles.css" />
+
   <!-- CSV parsing -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 
   <!-- Chart.js core -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 
   <!-- Date adapter & date-fns for time scales -->
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/date-fns/2.30.0/date_fns.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/date-fns/2.30.0/date_fns.min.js"></script>
 
   <!-- Annotation plugin (must come after Chart.js) -->
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 
-  <!-- noUiSlider for date‐range slider -->
+  <!-- noUiSlider for date-range slider -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css" rel="stylesheet"/>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
 
   <!-- Font Awesome for icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
-
-  <style>
-    :root {
-      --bg: #1a1a1a;
-      --panel: #2c2c2c;
-      --panel2: #3a3a3a;
-      --gold: #ffd700;
-      --text: #fff;
-      --muted: #888;
-      --border: #ffd700;
-      --shadow: rgba(0,0,0,0.5);
-    }
-    body { font-family: Arial, Helvetica, sans-serif; background-color: var(--bg); color: var(--text); margin:0; padding:20px; }
-    .container { max-width:1200px; margin:0 auto; }
-    .title-image { display:block; margin:0 auto 20px; width:500px; height:auto; }
-
-    /* Split Tile at the very top */
-    .split-tile {
-      display:flex;
-      align-items:stretch;
-      gap:0;
-      background: linear-gradient(135deg, #2c2c2c, #242424);
-      border: 2px solid var(--border);
-      border-radius:14px;
-      margin-bottom:20px;
-      overflow:hidden;
-      box-shadow: 0 10px 18px var(--shadow);
-    }
-    .split-half {
-      flex:1;
-      padding:18px 20px;
-      display:flex;
-      align-items:center;
-      gap:14px;
-    }
-    .split-half .icon {
-      font-size:1.6rem;
-      color: var(--gold);
-      width:32px; text-align:center;
-    }
-    .split-half .meta { display:flex; flex-direction:column; }
-    .split-half .label {
-      color: var(--muted);
-      font-size:.85rem;
-      letter-spacing:.5px;
-      text-transform:uppercase;
-    }
-    .split-half .value {
-      font-weight:700;
-      font-size:1.35rem;
-      margin-top:4px;
-    }
-    .split-divider {
-      width:1px;
-      background: linear-gradient(180deg, transparent, rgba(255,215,0,0.6), transparent);
-    }
-
-    .stats, .btc-metrics, .blockchain-metrics {
-      display:grid; gap:15px; background:linear-gradient(135deg,#2c2c2c,#242424);
-      padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 6px 12px var(--shadow);
-      border:1px solid var(--gold);
-    }
-    .stats { grid-template-columns:repeat(5,1fr); }
-    .btc-metrics { grid-template-columns:repeat(4,1fr); }
-    .blockchain-metrics { grid-template-columns:repeat(4,1fr); }
-    .stat-box {
-      background:linear-gradient(135deg,#3a3a3a,#2c2c2c);
-      border:2px solid var(--gold); border-radius:8px; padding:15px;
-      text-align:center; position:relative; transition:.2s;
-      animation:fadeIn .5s ease-in-out;
-    }
-    .stat-box:hover { transform:translateY(-5px); box-shadow:0 8px 16px rgba(255,215,0,0.3); }
-    .stat-box .icon { font-size:1.5em; color:var(--gold); margin-bottom:5px; }
-    .stat-box .label { color:#888; font-size:.9em; text-transform:uppercase; letter-spacing:1px; }
-    .stat-box .value { margin:5px 0; font-size:1.2em; font-weight:bold; }
-    .positive { color:#0f0; }
-    .negative { color:#f00; }
-
-    .table-container, .chart-container {
-      background:var(--panel); padding:20px; border-radius:10px;
-      margin-bottom:20px; box-shadow:0 4px 8px rgba(0,0,0,0.3);
-    }
-    table { width:100%; border-collapse:collapse; }
-    th, td { padding:10px; text-align:left; border-bottom:1px solid #444; }
-    th { background:var(--panel2); color:var(--gold); }
-    td { color:#ccc; }
-
-    canvas { max-width:100%; }
-    button {
-      background:var(--gold); color:var(--bg); border:none;
-      padding:10px 20px; font-size:1em; cursor:pointer; border-radius:5px;
-      display:block; margin:20px auto;
-    }
-    button:hover { background:#e6c200; }
-    .error { color:#f00; text-align:center; margin:10px 0; }
-
-    @keyframes fadeIn {
-      from { opacity:0; transform:translateY(10px); }
-      to   { opacity:1; transform:translateY(0); }
-    }
-    @media (max-width:1024px) { .stats { grid-template-columns:repeat(3,1fr);} }
-    @media (max-width:768px) {
-      .stats, .btc-metrics, .blockchain-metrics { grid-template-columns:repeat(2,1fr);}
-      .split-tile { flex-direction:column; }
-      .split-divider { height:1px; width:100%; }
-    }
-    @media (max-width:480px) { .stats, .btc-metrics, .blockchain-metrics { grid-template-columns:1fr;} }
-  </style>
 </head>
 
 <body>
@@ -249,8 +150,8 @@
       <h2>Bitcoin Price and Purchases Over Time</h2>
       <div id="chart-error" class="error"></div>
       <canvas id="priceChart"></canvas>
-      <div id="date-range-slider" style="margin:20px 0;"></div>
-      <div id="date-range-labels" style="display:flex;justify-content:space-between;color:#fff;font-size:.9em;"></div>
+      <div id="date-range-slider" class="date-range-slider"></div>
+      <div id="date-range-labels" class="date-range-labels"></div>
     </div>
 
     <div class="table-container">
@@ -269,10 +170,10 @@
       </table>
     </div>
 
-    <button onclick="updateTracker()">Refresh</button>
+    <button id="refresh-button" type="button">Refresh</button>
   </div>
 
   <!-- App script -->
-  <script src="script.js"></script>
+  <script defer src="script.js"></script>
 </body>
 </html>

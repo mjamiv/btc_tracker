@@ -141,6 +141,37 @@ function buildGainSeries(costTimeline, hist) {
     .filter(p => !isNaN(p.x) && !isNaN(p.y));
 }
 
+function setDateRangeLabels(container, startDate, endDate) {
+  container.replaceChildren();
+  const startLabel = document.createElement('span');
+  startLabel.textContent = startDate.toLocaleDateString('en-US', {
+    month: 'short',
+    year: 'numeric'
+  });
+
+  const endLabel = document.createElement('span');
+  endLabel.textContent = endDate.toLocaleDateString('en-US', {
+    month: 'short',
+    year: 'numeric'
+  });
+
+  container.append(startLabel, endLabel);
+}
+
+function setSignedValue(container, text, isPositive) {
+  container.replaceChildren();
+  const span = document.createElement('span');
+  span.className = isPositive ? 'positive' : 'negative';
+  span.textContent = text;
+  container.appendChild(span);
+}
+
+function appendCell(row, value) {
+  const td = document.createElement('td');
+  td.textContent = value;
+  row.appendChild(td);
+}
+
 /* ───────────────────────────── Filter */
 function filterDataByDateRange(s, e) {
   const within = a => a.filter(pt => pt.x >= s && pt.x <= e);
@@ -200,14 +231,10 @@ function initializeSlider(minDate, maxDate) {
       });
       slider.noUiSlider.on('update', v => {
         const [s, e] = v.map(n => new Date(+n));
-        labels.innerHTML =
-          `<span>${s.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>` +
-          `<span>${e.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>`;
+        setDateRangeLabels(labels, s, e);
         filterDataByDateRange(s, e);
       });
-      labels.innerHTML =
-        `<span>${minDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>` +
-        `<span>${maxDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>`;
+      setDateRangeLabels(labels, minDate, maxDate);
     } else if (++tries <= maxRetries) {
       setTimeout(tryInit, 500);
     } else {
@@ -222,8 +249,8 @@ async function updateTracker() {
   try {
     // Load CSVs
     const [transactions, historic] = await Promise.all([
-      fetchCSV('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/transactions.csv'),
-      fetchCSV('https://raw.githubusercontent.com/mjamiv/btc_tracker/main/historical_btc_prices.csv')
+      fetchCSV('transactions.csv'),
+      fetchCSV('historical_btc_prices.csv')
     ]);
 
     // Metrics
@@ -275,21 +302,21 @@ async function updateTracker() {
     $('invested').innerText = invested.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     $('cost-basis').innerText = costBasis.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     $('current-value').innerText = currentVal.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-    $('gain-loss').innerHTML =
-      `<span class="${gainLoss >= 0 ? 'positive' : 'negative'}">` +
-        `${gainLoss >= 0 ? '+' : ''}` +
-        `${gainLoss.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} ` +
-        `<span class="percentage">(${gainPct.toFixed(2)}%)</span>` +
-      `</span>`;
+    setSignedValue(
+      $('gain-loss'),
+      `${gainLoss >= 0 ? '+' : ''}${gainLoss.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} (${gainPct.toFixed(2)}%)`,
+      gainLoss >= 0
+    );
 
     // BTC market tiles
     $('btc-price').innerText = currentPrice.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     $('btc-market-cap').innerText = btcMetrics.marketCap.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     $('btc-volume').innerText = btcMetrics.volume24h.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-    $('btc-price-change').innerHTML =
-      `<span class="${btcMetrics.priceChange24h >= 0 ? 'positive' : 'negative'}">` +
-        `${btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)}%` +
-      `</span>`;
+    setSignedValue(
+      $('btc-price-change'),
+      `${btcMetrics.priceChange24h >= 0 ? '+' : ''}${btcMetrics.priceChange24h.toFixed(2)}%`,
+      btcMetrics.priceChange24h >= 0
+    );
 
     // Chain tiles
     $('btc-block-height').innerText = blockchainMetrics.blockHeight.toLocaleString();
@@ -300,17 +327,16 @@ async function updateTracker() {
     // Transaction table
     const tableBody = document.getElementById('transactions-body');
     if (tableBody) {
-      tableBody.innerHTML = '';
+      tableBody.replaceChildren();
       purchases
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
         .forEach(p => {
           const tr = document.createElement('tr');
-          tr.innerHTML =
-            `<td>${new Date(p.timestamp).toLocaleDateString()}</td>` +
-            `<td>${p.quantity.toFixed(8)}</td>` +
-            `<td>${p.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>` +
-            `<td>${p.priceAtTransaction.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>` +
-            `<td>${p.exchange}</td>`;
+          appendCell(tr, new Date(p.timestamp).toLocaleDateString());
+          appendCell(tr, p.quantity.toFixed(8));
+          appendCell(tr, p.totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' }));
+          appendCell(tr, p.priceAtTransaction.toLocaleString('en-US', { style: 'currency', currency: 'USD' }));
+          appendCell(tr, p.exchange);
           tableBody.appendChild(tr);
         });
     }
@@ -533,4 +559,9 @@ async function updateTracker() {
 }
 
 // On load
+const refreshButton = document.getElementById('refresh-button');
+if (refreshButton) {
+  refreshButton.addEventListener('click', updateTracker);
+}
+
 updateTracker();

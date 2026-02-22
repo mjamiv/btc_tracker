@@ -1,1 +1,11 @@
-You can view the live app at: https://mjamiv.github.io/btc_tracker/
+BTC tracker dashboard.
+
+Local run:
+- Open `/Users/mjamiv/coding/btc-chart/btc_tracker/index.html` in a browser.
+
+Automations:
+- Daily historical BTC prices are refreshed by `/Users/mjamiv/coding/btc-chart/btc_tracker/.github/workflows/update-historical-prices.yml`.
+- Security scans run in `/Users/mjamiv/coding/btc-chart/btc_tracker/.github/workflows/security-sweep.yml`.
+
+Security note:
+- GitHub Pages is public-by-design for static assets. See `/Users/mjamiv/coding/btc-chart/btc_tracker/SECURITY.md` before redeploying sensitive data.
