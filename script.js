@@ -131,6 +131,20 @@ function normalizeTransactionRow(row) {
   };
 }
 
+function normalizeLocalTransactionRow(row) {
+  const normalized = normalizeTransactionRow(row);
+  const quantity = +String(normalized['Quantity Transacted'] || '').replace(/[^0-9.-]/g, '');
+  const total = parseUsd(normalized.Total);
+  const fees = Math.max(parseUsd(normalized.Fees), 0);
+  if (quantity > 0 && total > 0) {
+    normalized['Price at Transaction'] = formatUsd(total / quantity);
+    normalized.Subtotal = formatUsd(Math.max(total - fees, 0));
+    normalized.Total = formatUsd(total);
+    normalized.Fees = formatUsd(fees);
+  }
+  return normalized;
+}
+
 function transactionKey(row) {
   return [
     row.Timestamp,
@@ -161,7 +175,7 @@ function getLocalTransactions() {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.map(normalizeTransactionRow).filter(r => r.Timestamp);
+    return parsed.map(normalizeLocalTransactionRow).filter(r => r.Timestamp);
   } catch (e) {
     console.error('Failed to read local transactions', e);
     return [];
@@ -170,7 +184,7 @@ function getLocalTransactions() {
 
 function setLocalTransactions(rows) {
   try {
-    localStorage.setItem(LOCAL_TX_STORAGE_KEY, JSON.stringify(rows.map(normalizeTransactionRow)));
+    localStorage.setItem(LOCAL_TX_STORAGE_KEY, JSON.stringify(rows.map(normalizeLocalTransactionRow)));
     return true;
   } catch (e) {
     console.error('Failed to persist local transactions', e);
@@ -732,7 +746,8 @@ function handleAddTransaction(event) {
   }
 
   const subtotal = total - fees;
-  const priceAtTransaction = subtotal > 0 ? subtotal / quantity : total / quantity;
+  // Use effective fill price from actual total paid per BTC.
+  const priceAtTransaction = total / quantity;
   const row = {
     Timestamp: formatCsvTimestamp(timestampDate),
     'Quantity Transacted': quantity.toFixed(8),
