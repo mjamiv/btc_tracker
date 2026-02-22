@@ -418,13 +418,22 @@ async function updateTracker() {
 
     // Purchases
     const purchases = mergedTransactionRows
-      .map(r => ({
-        timestamp: r.Timestamp,
-        quantity: +String(r['Quantity Transacted'] || '').replace(/[^0-9.-]/g, ''),
-        totalCost: parseUsd(r.Total),
-        priceAtTransaction: parseUsd(r['Price at Transaction']),
-        exchange: r.Exchange
-      }))
+      .map(r => {
+        const quantity = +String(r['Quantity Transacted'] || '').replace(/[^0-9.-]/g, '');
+        const totalRaw = parseUsd(r.Total);
+        const subtotalRaw = parseUsd(r.Subtotal);
+        const notional = totalRaw > 0 ? totalRaw : subtotalRaw;
+        const derivedPrice = quantity > 0 && notional > 0 ? notional / quantity : NaN;
+
+        return {
+          timestamp: r.Timestamp,
+          quantity,
+          totalCost: notional,
+          // Derive unit price from quantity/notional so stale CSV price fields cannot skew the UI.
+          priceAtTransaction: !isNaN(derivedPrice) ? derivedPrice : parseUsd(r['Price at Transaction']),
+          exchange: r.Exchange
+        };
+      })
       .filter(
         p =>
           !isNaN(p.quantity) &&

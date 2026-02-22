@@ -137,21 +137,43 @@ def fill_to_row(fill: dict[str, object], expected_product_id: str) -> dict[str, 
     size = parse_decimal(fill.get("size"))
     price = parse_decimal(fill.get("price"))
     commission = parse_decimal(fill.get("commission"))
-    if size <= 0 or price <= 0:
+    filled_value = parse_decimal(fill.get("filled_value"))
+    size_in_quote_raw = fill.get("size_in_quote")
+    if isinstance(size_in_quote_raw, bool):
+        size_in_quote = size_in_quote_raw
+    else:
+        size_in_quote = str(size_in_quote_raw).strip().lower() in {"true", "1", "yes"}
+
+    if size <= 0:
         return None
 
     trade_time = str(fill.get("trade_time") or "").strip()
     if not trade_time:
         return None
 
-    subtotal = (size * price).quantize(CENT, rounding=ROUND_HALF_UP)
+    if size_in_quote:
+        subtotal = size
+        quantity = (subtotal / price) if price > 0 else Decimal("0")
+    else:
+        quantity = size
+        subtotal = filled_value if filled_value > 0 else (quantity * price)
+
+    if quantity <= 0:
+        return None
+
+    price_at_transaction = subtotal / quantity
+    if price_at_transaction <= 0:
+        return None
+
+    subtotal = subtotal.quantize(CENT, rounding=ROUND_HALF_UP)
+    price_at_transaction = price_at_transaction.quantize(CENT, rounding=ROUND_HALF_UP)
     total = (subtotal + commission).quantize(CENT, rounding=ROUND_HALF_UP)
 
     return {
         "Timestamp": format_timestamp_utc(trade_time),
-        "Quantity Transacted": f"{size:.8f}",
+        "Quantity Transacted": f"{quantity:.8f}",
         "Price Currency": "USD",
-        "Price at Transaction": format_usd(price),
+        "Price at Transaction": format_usd(price_at_transaction),
         "Subtotal": format_usd(subtotal),
         "Total": format_usd(total),
         "Fees": format_usd(commission),
