@@ -145,29 +145,6 @@ function normalizeLocalTransactionRow(row) {
   return normalized;
 }
 
-function resolvePriceAtTransaction(row, quantity) {
-  const explicitPrice = parseUsd(row['Price at Transaction']);
-  const totalRaw = parseUsd(row.Total);
-  const subtotalRaw = parseUsd(row.Subtotal);
-  const derivedFromTotal = quantity > 0 && totalRaw > 0 ? totalRaw / quantity : NaN;
-  const derivedFromSubtotal = quantity > 0 && subtotalRaw > 0 ? subtotalRaw / quantity : NaN;
-
-  if (explicitPrice > 0) {
-    const diffs = [derivedFromTotal, derivedFromSubtotal]
-      .filter(v => !isNaN(v) && v > 0)
-      .map(v => Math.abs(v - explicitPrice) / explicitPrice);
-    const closestDiff = diffs.length ? Math.min(...diffs) : Infinity;
-    // Keep trusted CSV prices; only override clear outliers.
-    if (closestDiff <= 0.2) {
-      return explicitPrice;
-    }
-  }
-
-  if (!isNaN(derivedFromSubtotal) && derivedFromSubtotal > 0) return derivedFromSubtotal;
-  if (!isNaN(derivedFromTotal) && derivedFromTotal > 0) return derivedFromTotal;
-  return explicitPrice;
-}
-
 function transactionKey(row) {
   return [
     row.Timestamp,
@@ -446,13 +423,12 @@ async function updateTracker() {
         const totalRaw = parseUsd(r.Total);
         const subtotalRaw = parseUsd(r.Subtotal);
         const notional = totalRaw > 0 ? totalRaw : subtotalRaw;
-        const resolvedPrice = resolvePriceAtTransaction(r, quantity);
 
         return {
           timestamp: r.Timestamp,
           quantity,
           totalCost: notional,
-          priceAtTransaction: resolvedPrice,
+          priceAtTransaction: parseUsd(r['Price at Transaction']),
           exchange: r.Exchange
         };
       })
