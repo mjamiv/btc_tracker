@@ -213,101 +213,6 @@ button:disabled {
   margin: 10px 0;
 }
 
-.transaction-entry-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.local-transaction-count {
-  margin: 0;
-  color: var(--gold);
-  font-size: 0.92rem;
-  font-weight: 700;
-}
-
-.transaction-entry-note {
-  margin: 0 0 14px 0;
-  color: #b9b9b9;
-  font-size: 0.92rem;
-}
-
-.transaction-form {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px 12px;
-}
-
-.transaction-form label {
-  color: #cfcfcf;
-  font-size: 0.85rem;
-}
-
-.transaction-form input {
-  width: 100%;
-  background: #1f1f1f;
-  color: #fff;
-  border: 1px solid #5a5a5a;
-  border-radius: 6px;
-  padding: 8px 10px;
-  box-sizing: border-box;
-}
-
-.transaction-actions {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.transaction-actions button {
-  margin: 0;
-}
-
-#add-transaction-button {
-  background: #39a845;
-  color: #fff;
-}
-
-#add-transaction-button:hover {
-  background: #2f8f3a;
-}
-
-#export-transactions-button {
-  background: #1f6ed4;
-  color: #fff;
-}
-
-#export-transactions-button:hover {
-  background: #1b5db2;
-}
-
-#clear-local-transactions-button {
-  background: #b33939;
-  color: #fff;
-}
-
-#clear-local-transactions-button:hover {
-  background: #972f2f;
-}
-
-.form-message {
-  min-height: 20px;
-  margin: 12px 0 0;
-  font-size: 0.92rem;
-}
-
-.form-message.success {
-  color: #35d267;
-}
-
-.form-message.error {
-  color: #ff5f5f;
-  text-align: left;
-  margin: 12px 0 0;
-}
-
 .date-range-slider {
   margin: 20px 0;
 }
@@ -344,10 +249,6 @@ button:disabled {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .transaction-form {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .split-tile {
     flex-direction: column;
   }
@@ -363,14 +264,5 @@ button:disabled {
   .btc-metrics,
   .blockchain-metrics {
     grid-template-columns: 1fr;
-  }
-
-  .transaction-form {
-    grid-template-columns: 1fr;
-  }
-
-  .transaction-entry-header {
-    flex-direction: column;
-    align-items: flex-start;
   }
 }

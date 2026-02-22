@@ -5,8 +5,6 @@ Live app:
 
 Local run:
 - Open `/Users/mjamiv/coding/btc-chart/btc_tracker/index.html` in a browser.
-- Use **Add Transaction** to store new entries locally in your browser.
-- Use **Export Updated CSV** to download a merged `transactions.csv` that includes local additions.
 
 Automations:
 - Daily historical BTC prices are refreshed by `/Users/mjamiv/coding/btc-chart/btc_tracker/.github/workflows/update-historical-prices.yml`.
