@@ -1,4 +1,5 @@
 Timestamp,Quantity Transacted,Price Currency,Price at Transaction,Subtotal,Total,Fees,Exchange
+2026-02-22 18:40:45,0.01462980,USD,"$67,542.94","988.14","$1000","$11.86",Coinbase
 2026-02-05 15:34:10,0.00360947,USD,"$67,987.82","$245.40","$250.00","$4.60",Coinbase
 2026-02-01 15:33:41,0.00318955,USD,"$76,938.75","$245.40","$250.00","$4.60",Coinbase
 2026-01-29 18:32:45,0.01149847,USD,"$90,290.12","$981.60","$1000.00","$18.40",Coinbase
@@ -150,6 +151,7 @@ Timestamp,Quantity Transacted,Price Currency,Price at Transaction,Subtotal,Total
 2022-02-15 21:02:39,0.00020303,USD,"$44,176.73",$9.01,$10.00,$0.99,Coinbase
 2022-02-08 2:19:58,0.00020368,USD,"$44,013.20",$9.01,$10.00,$0.99,Coinbase
 2022-01-26 13:58:08,0.00023496,USD,"$38,157.59",$9.01,$10.00,$0.99,Coinbase
+
 
 
 
